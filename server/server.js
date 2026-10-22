@@ -14,10 +14,27 @@ const app = express();
 // Security Headers
 app.use(helmet());
 
-// Cross-Origin Resource Sharing
+// Cross-Origin Resource Sharing (Supports local development, Netlify, and Render)
+const allowedOrigins = [
+  env.clientUrl,
+  'http://localhost:5173',
+  'http://localhost:3000'
+];
+
 app.use(
   cors({
-    origin: [env.clientUrl, 'http://localhost:5173', 'http://localhost:3000'],
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps, curl, or server-to-server proxy)
+      if (!origin) return callback(null, true);
+      if (
+        allowedOrigins.includes(origin) ||
+        origin.endsWith('.netlify.app') ||
+        origin.endsWith('.onrender.com')
+      ) {
+        return callback(null, true);
+      }
+      return callback(null, true);
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Razorpay-Signature']

@@ -16,7 +16,7 @@ const sendTokenResponse = (admin, statusCode, res, message = 'Success') => {
     expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
     httpOnly: true,
     secure: env.isProduction,
-    sameSite: env.isProduction ? 'strict' : 'lax'
+    sameSite: env.isProduction ? 'none' : 'lax'
   };
 
   res

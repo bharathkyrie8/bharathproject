@@ -89,6 +89,9 @@ const AdminPanel = () => {
     setLoginError(null);
     try {
       const res = await adminLogin(loginForm.identifier, loginForm.password);
+      if (res && res.token) {
+        localStorage.setItem('admin_token', res.token);
+      }
       setAdmin(res.admin);
       loadDashboardData();
     } catch (err) {
@@ -101,8 +104,10 @@ const AdminPanel = () => {
   const handleLogout = async () => {
     try {
       await adminLogout();
-      setAdmin(null);
     } catch (err) {
+      // Continue cleanup
+    } finally {
+      localStorage.removeItem('admin_token');
       setAdmin(null);
     }
   };

@@ -1,0 +1,5 @@
+# Netlify API Proxy to Render Backend
+/api/*  https://bharathproject.onrender.com/api/:splat  200
+
+# Single Page App (SPA) Deep Routing Fallback
+/*      /index.html                                     200
