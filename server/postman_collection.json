@@ -1,0 +1,507 @@
+{
+  "info": {
+    "_postman_id": "c8a143bb-5100-4b10-8b1e-cycle-marathon-2026",
+    "name": "Salem Cycle Marathon 2026 API",
+    "description": "Complete Postman collection for Cycle Marathon Registration, Razorpay Payments, Event Configuration, and Admin Management Platform.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "adminToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "registrationId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "orderId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Public Endpoints",
+      "item": [
+        {
+          "name": "1. Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "2. Get Event Details & Venue",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/event",
+              "host": ["{{baseUrl}}"],
+              "path": ["event"]
+            }
+          }
+        },
+        {
+          "name": "3. Get Active Categories",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/categories",
+              "host": ["{{baseUrl}}"],
+              "path": ["categories"]
+            }
+          }
+        },
+        {
+          "name": "4. Get Gallery Showcase",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/gallery",
+              "host": ["{{baseUrl}}"],
+              "path": ["gallery"]
+            }
+          }
+        },
+        {
+          "name": "5. Submit Contact Message",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ravi Kumar\",\n  \"email\": \"ravi.kumar@example.com\",\n  \"phone\": \"+91 98410 12345\",\n  \"subject\": \"Bicycle Rental Inquiry\",\n  \"message\": \"Are there options to rent a hybrid road bicycle at Kauvery Hospital Expo on 28th October?\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/contact",
+              "host": ["{{baseUrl}}"],
+              "path": ["contact"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Registration & Payment Flow",
+      "item": [
+        {
+          "name": "1. Initiate Registration & Generate Order",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.success && jsonData.data) {",
+                  "    pm.collectionVariables.set('registrationId', jsonData.data.registrationId);",
+                  "    pm.collectionVariables.set('orderId', jsonData.data.paymentOrder.orderId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Rajesh Kannan\",\n  \"email\": \"rajesh.kannan@example.com\",\n  \"phone\": \"9876543210\",\n  \"dob\": \"1996-05-14\",\n  \"gender\": \"MALE\",\n  \"bloodGroup\": \"O+\",\n  \"tShirtSize\": \"L\",\n  \"categoryId\": \"REPLACE_WITH_CATEGORY_ID\",\n  \"address\": {\n    \"street\": \"12 Cherry Road, Hasthampatti\",\n    \"city\": \"Salem\",\n    \"state\": \"Tamil Nadu\",\n    \"pincode\": \"636007\",\n    \"country\": \"India\"\n  },\n  \"emergencyContact\": {\n    \"name\": \"Kavitha Kannan\",\n    \"relation\": \"Spouse\",\n    \"phone\": \"9876543219\"\n  },\n  \"termsAccepted\": true,\n  \"medicalDeclarationAccepted\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/registration/initiate",
+              "host": ["{{baseUrl}}"],
+              "path": ["registration", "initiate"]
+            }
+          }
+        },
+        {
+          "name": "2. Verify Payment Signature & Confirm",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"razorpay_order_id\": \"{{orderId}}\",\n  \"razorpay_payment_id\": \"pay_test_12345678\",\n  \"razorpay_signature\": \"valid_mock_signature\",\n  \"method\": \"upi\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payment/verify",
+              "host": ["{{baseUrl}}"],
+              "path": ["payment", "verify"]
+            }
+          }
+        },
+        {
+          "name": "3. Get Registration Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/registration/{{registrationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["registration", "{{registrationId}}"]
+            }
+          }
+        },
+        {
+          "name": "4. Lookup Registrations by Phone/Email",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"rajesh.kannan@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/registration/lookup",
+              "host": ["{{baseUrl}}"],
+              "path": ["registration", "lookup"]
+            }
+          }
+        },
+        {
+          "name": "5. Razorpay Webhook Simulation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Razorpay-Signature",
+                "value": "mock_webhook_signature"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"entity\": \"event\",\n  \"account_id\": \"acc_123\",\n  \"event\": \"payment.captured\",\n  \"contains\": [\"payment\"],\n  \"payload\": {\n    \"payment\": {\n      \"entity\": {\n        \"id\": \"pay_test_webhook_01\",\n        \"entity\": \"payment\",\n        \"amount\": 69900,\n        \"currency\": \"INR\",\n        \"status\": \"captured\",\n        \"order_id\": \"{{orderId}}\",\n        \"method\": \"upi\"\n      }\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payment/webhook",
+              "host": ["{{baseUrl}}"],
+              "path": ["payment", "webhook"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Direct UPI Payment Flow (Solution 2 - No PAN Needed)",
+      "item": [
+        {
+          "name": "1. Get UPI Details & Dynamic QR",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/payment/upi-details?amount=699&registrationId={{registrationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["payment", "upi-details"],
+              "query": [
+                { "key": "amount", "value": "699" },
+                { "key": "registrationId", "value": "{{registrationId}}" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "2. Submit UPI Payment Proof (UTR + Screenshot)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"registrationId\": \"{{registrationId}}\",\n  \"utrNumber\": \"428901234567\",\n  \"screenshotUrl\": \"https://res.cloudinary.com/dfbfjvln8/image/upload/v1792601739/ww9sevvqr69fabjnpdow.jpg\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payment/submit-upi-proof",
+              "host": ["{{baseUrl}}"],
+              "path": ["payment", "submit-upi-proof"]
+            }
+          }
+        },
+        {
+          "name": "3. Admin Get Pending UPI Verifications",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/payment/admin/pending-verifications",
+              "host": ["{{baseUrl}}"],
+              "path": ["payment", "admin", "pending-verifications"]
+            }
+          }
+        },
+        {
+          "name": "4. Admin Verify UPI Payment & Confirm",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"registrationId\": \"{{registrationId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payment/admin/verify-upi",
+              "host": ["{{baseUrl}}"],
+              "path": ["payment", "admin", "verify-upi"]
+            }
+          }
+        },
+        {
+          "name": "5. Admin Reject Invalid UPI Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"registrationId\": \"{{registrationId}}\",\n  \"reason\": \"Invalid UTR: Amount of ₹699 not credited to account.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payment/admin/reject-upi",
+              "host": ["{{baseUrl}}"],
+              "path": ["payment", "admin", "reject-upi"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin Authentication & Management",
+      "item": [
+        {
+          "name": "1. Admin Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.success && jsonData.token) {",
+                  "    pm.collectionVariables.set('adminToken', jsonData.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"admin@cyclemarathon.com\",\n  \"password\": \"AdminSecure2026!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "2. Get Current Admin Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "me"]
+            }
+          }
+        },
+        {
+          "name": "3. Get Dashboard Statistics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/dashboard",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "dashboard"]
+            }
+          }
+        },
+        {
+          "name": "4. Search & Filter Participants",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/participants?page=1&limit=25&status=CONFIRMED",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "participants"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "25" },
+                { "key": "status", "value": "CONFIRMED" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "5. Export Participants to CSV",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/export-csv",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "export-csv"]
+            }
+          }
+        },
+        {
+          "name": "6. Toggle Registration Manually (Open / Close)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isOpen\": false,\n  \"reason\": \"All 5,000 slots across all categories have been booked. Spot registrations available at Kauvery Hospital Expo.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/event/toggle-registration",
+              "host": ["{{baseUrl}}"],
+              "path": ["event", "toggle-registration"]
+            }
+          }
+        },
+        {
+          "name": "7. View Admin Audit Logs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/audit-logs",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "audit-logs"]
+            }
+          }
+        },
+        {
+          "name": "8. Admin Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "logout"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
