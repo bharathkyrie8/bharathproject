@@ -10,15 +10,11 @@ const submitContactMessage = async (req, res, next) => {
   try {
     const contactMessage = await ContactMessage.create(req.validatedBody);
 
-    // 1. Send executive alert email to organizer (bharathkyrie8@gmail.com)
-    sendOrganizerContactAlert({ contactMessage }).catch((err) =>
-      console.error('[ContactController] Failed to dispatch organizer alert:', err.message)
-    );
-
-    // 2. Send luxury editorial confirmation acknowledgment to the sender
-    sendUserContactAcknowledgment({ contactMessage }).catch((err) =>
-      console.error('[ContactController] Failed to dispatch user acknowledgment:', err.message)
-    );
+    // Concurrently dispatch organizer alert (received mail) and sender acknowledgment (sent mail)
+    await Promise.allSettled([
+      sendOrganizerContactAlert({ contactMessage }),
+      sendUserContactAcknowledgment({ contactMessage })
+    ]);
 
     res.status(201).json({
       success: true,

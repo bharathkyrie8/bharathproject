@@ -228,6 +228,10 @@ const sendOrganizerContactAlert = async ({ contactMessage }) => {
 const sendUserContactAcknowledgment = async ({ contactMessage }) => {
   try {
     const transporter = await getTransporter();
+    if (!contactMessage || !contactMessage.email) {
+      console.warn('[EmailService] Sender email missing, skipping user acknowledgment');
+      return null;
+    }
     const refId = contactMessage._id ? contactMessage._id.toString().slice(-6).toUpperCase() : 'ACK';
     const submittedTime = new Date(contactMessage.createdAt || Date.now()).toLocaleString('en-IN', {
       timeZone: 'Asia/Kolkata',

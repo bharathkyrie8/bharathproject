@@ -35,12 +35,18 @@ const registrationSchema = Joi.object({
     'string.empty': 'Please select a registration category'
   }),
   address: Joi.object({
-    street: Joi.string().trim().min(3).required().messages({ 'string.empty': 'Street address is required' }),
-    city: Joi.string().trim().min(2).required().messages({ 'string.empty': 'City is required' }),
-    state: Joi.string().trim().min(2).required().messages({ 'string.empty': 'State is required' }),
-    pincode: Joi.string().trim().min(4).max(10).required().messages({ 'string.empty': 'Pincode is required' }),
+    street: Joi.string().trim().allow('', null).default('Salem'),
+    city: Joi.string().trim().allow('', null).default('Salem'),
+    state: Joi.string().trim().allow('', null).default('Tamil Nadu'),
+    pincode: Joi.string().trim().allow('', null).default('636001'),
     country: Joi.string().trim().default('India')
-  }).required(),
+  }).default({
+    street: 'Salem',
+    city: 'Salem',
+    state: 'Tamil Nadu',
+    pincode: '636001',
+    country: 'India'
+  }),
   emergencyContact: Joi.object({
     name: Joi.string().trim().min(2).required().messages({ 'string.empty': 'Emergency contact name is required' }),
     relation: Joi.string().trim().min(2).required().messages({ 'string.empty': 'Emergency contact relation is required' }),

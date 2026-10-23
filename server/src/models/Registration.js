@@ -52,10 +52,10 @@ const registrationSchema = new mongoose.Schema(
         required: [true, 'T-Shirt size is required']
       },
       address: {
-        street: { type: String, required: true, trim: true },
-        city: { type: String, required: true, trim: true },
-        state: { type: String, required: true, trim: true },
-        pincode: { type: String, required: true, trim: true },
+        street: { type: String, trim: true, default: 'Salem' },
+        city: { type: String, trim: true, default: 'Salem' },
+        state: { type: String, trim: true, default: 'Tamil Nadu' },
+        pincode: { type: String, trim: true, default: '636001' },
         country: { type: String, default: 'India', trim: true }
       },
       emergencyContact: {

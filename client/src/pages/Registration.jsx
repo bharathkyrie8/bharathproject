@@ -62,7 +62,7 @@ const Registration = () => {
     bloodGroup: 'O+',
     tShirtSize: 'M',
     address: {
-      street: '',
+      street: 'Salem Main Road',
       city: 'Salem',
       state: 'Tamil Nadu',
       pincode: '636001',
@@ -962,6 +962,27 @@ const Registration = () => {
                     </div>
 
                     {/* Address Fields */}
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#444', marginBottom: 6 }}>
+                        Street / Residential Address
+                      </label>
+                      <input 
+                        type="text" 
+                        value={formData.address.street} 
+                        onChange={(e) => setFormData({ ...formData, address: { ...formData.address, street: e.target.value } })}
+                        placeholder="e.g. 12, Anna Nagar / Trichy Main Road"
+                        style={{ 
+                          width: '100%', 
+                          padding: '12px 14px', 
+                          borderRadius: 3, 
+                          border: '1px solid rgba(29, 30, 32, 0.15)', 
+                          backgroundColor: '#FAF7F2', 
+                          fontSize: '0.95rem',
+                          outline: 'none'
+                        }}
+                      />
+                    </div>
+
                     <div className="form-row-3">
                       <div>
                         <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: '#444', marginBottom: 4 }}>
