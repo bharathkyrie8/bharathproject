@@ -1,4 +1,4 @@
-const { getTransporter } = require('../config/mailer');
+const { sendMailSafe } = require('../config/mailer');
 const env = require('../config/env');
 const { formatIST } = require('../utils/timeUtils');
 
@@ -7,7 +7,6 @@ const { formatIST } = require('../utils/timeUtils');
  */
 const sendRegistrationConfirmationEmail = async ({ registration, payment, event }) => {
   try {
-    const transporter = await getTransporter();
     const p = registration.participant;
     const c = registration.categorySnapshot;
     const venue = (event && event.expoVenue) || {
@@ -100,8 +99,8 @@ const sendRegistrationConfirmationEmail = async ({ registration, payment, event 
       html: htmlContent
     };
 
-    const info = await transporter.sendMail(mailOptions);
-    console.log(`[EmailService] Confirmation email dispatched to ${p.email} (MessageId: ${info.messageId})`);
+    const info = await sendMailSafe(mailOptions);
+    console.log(`[EmailService] Confirmation email dispatched to ${p.email}`);
     return info;
   } catch (error) {
     console.error(`[EmailService] Failed to send confirmation email:`, error.message);
@@ -113,7 +112,6 @@ const sendRegistrationConfirmationEmail = async ({ registration, payment, event 
  */
 const sendOrganizerContactAlert = async ({ contactMessage }) => {
   try {
-    const transporter = await getTransporter();
     const refId = contactMessage._id ? contactMessage._id.toString().slice(-6).toUpperCase() : 'NEW';
     const submittedTime = new Date(contactMessage.createdAt || Date.now()).toLocaleString('en-IN', {
       timeZone: 'Asia/Kolkata',
@@ -214,8 +212,8 @@ const sendOrganizerContactAlert = async ({ contactMessage }) => {
       html: htmlContent
     };
 
-    const info = await transporter.sendMail(mailOptions);
-    console.log(`[EmailService] Organizer inquiry notification sent to ${env.smtp.organizerEmail} (MessageId: ${info.messageId})`);
+    const info = await sendMailSafe(mailOptions);
+    console.log(`[EmailService] Organizer inquiry notification sent to ${env.smtp.organizerEmail}`);
     return info;
   } catch (error) {
     console.error(`[EmailService] Failed to notify organizer:`, error.message);
@@ -227,7 +225,6 @@ const sendOrganizerContactAlert = async ({ contactMessage }) => {
  */
 const sendUserContactAcknowledgment = async ({ contactMessage }) => {
   try {
-    const transporter = await getTransporter();
     if (!contactMessage || !contactMessage.email) {
       console.warn('[EmailService] Sender email missing, skipping user acknowledgment');
       return null;
@@ -344,8 +341,8 @@ const sendUserContactAcknowledgment = async ({ contactMessage }) => {
       html: htmlContent
     };
 
-    const info = await transporter.sendMail(mailOptions);
-    console.log(`[EmailService] User contact confirmation dispatched to ${contactMessage.email} (MessageId: ${info.messageId})`);
+    const info = await sendMailSafe(mailOptions);
+    console.log(`[EmailService] User contact confirmation dispatched to ${contactMessage.email}`);
     return info;
   } catch (error) {
     console.error(`[EmailService] Failed to send user acknowledgment email:`, error.message);
@@ -357,7 +354,6 @@ const sendUserContactAcknowledgment = async ({ contactMessage }) => {
  */
 const sendRegistrationSubmittedEmail = async ({ registration, payment }) => {
   try {
-    const transporter = await getTransporter();
     const p = registration.participant || {};
     const c = registration.categorySnapshot || {};
     const refId = registration.registrationId;
@@ -442,7 +438,7 @@ const sendRegistrationSubmittedEmail = async ({ registration, payment }) => {
       html: htmlContent
     };
 
-    const info = await transporter.sendMail(mailOptions);
+    const info = await sendMailSafe(mailOptions);
     console.log(`[EmailService] Registration submitted email sent to participant: ${p.email}`);
     return info;
   } catch (error) {
@@ -455,7 +451,6 @@ const sendRegistrationSubmittedEmail = async ({ registration, payment }) => {
  */
 const sendOrganizerRegistrationAlert = async ({ registration, payment }) => {
   try {
-    const transporter = await getTransporter();
     const p = registration.participant || {};
     const c = registration.categorySnapshot || {};
     const refId = registration.registrationId;
@@ -529,7 +524,7 @@ const sendOrganizerRegistrationAlert = async ({ registration, payment }) => {
       html: htmlContent
     };
 
-    const info = await transporter.sendMail(mailOptions);
+    const info = await sendMailSafe(mailOptions);
     console.log(`[EmailService] Organizer registration alert sent to ${env.smtp.organizerEmail}`);
     return info;
   } catch (error) {

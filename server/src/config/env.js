@@ -26,8 +26,11 @@ const env = {
     port: parseInt(process.env.SMTP_PORT, 10) || 587,
     user: process.env.SMTP_USER || '',
     pass: process.env.SMTP_PASS || '',
-    from: process.env.EMAIL_FROM || 'Salem Cycle Marathon <noreply@cyclemarathon.com>',
-    organizerEmail: process.env.ORGANIZER_EMAIL || 'organizer@cyclemarathon.com'
+    from: process.env.EMAIL_FROM || 'Salem Cycle Marathon <bharathkyrie8@gmail.com>',
+    organizerEmail: process.env.ORGANIZER_EMAIL || 'bharathkyrie8@gmail.com',
+    brevoApiKey: process.env.BREVO_API_KEY || '',
+    resendApiKey: process.env.RESEND_API_KEY || '',
+    gmailScriptUrl: process.env.GMAIL_SCRIPT_URL || ''
   },
   cloudinary: {
     cloudName: process.env.CLOUDINARY_CLOUD_NAME || '',
