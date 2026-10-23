@@ -292,6 +292,7 @@ const Contact = () => {
                 <textarea 
                   name="message" 
                   required 
+                  minLength={2}
                   rows={5}
                   value={formData.message} 
                   onChange={handleChange}

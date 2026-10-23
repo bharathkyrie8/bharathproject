@@ -21,10 +21,16 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    const message =
-      (error.response && error.response.data && error.response.data.message) ||
-      error.message ||
-      'An unexpected error occurred. Please try again.';
+    let message = 'An unexpected error occurred. Please try again.';
+    if (error.response && error.response.data) {
+      if (Array.isArray(error.response.data.errors) && error.response.data.errors.length > 0) {
+        message = error.response.data.errors.map((e) => e.message).join('. ');
+      } else if (error.response.data.message) {
+        message = error.response.data.message;
+      }
+    } else if (error.message) {
+      message = error.message;
+    }
     error.customMessage = message;
     return Promise.reject(error);
   }
