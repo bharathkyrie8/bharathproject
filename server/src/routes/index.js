@@ -94,6 +94,41 @@ router.get('/health/test-email', async (req, res) => {
   }
 });
 
+// Live Socket Connectivity Diagnostic (Test which outbound ports Render allows)
+router.get('/health/test-socket', (req, res) => {
+  const net = require('net');
+  const host = req.query.host || 'smtp.gmail.com';
+  const port = parseInt(req.query.port, 10) || 587;
+  const timeout = 4000;
+
+  const socket = new net.Socket();
+
+  socket.setTimeout(timeout);
+
+  socket.on('connect', () => {
+    socket.destroy();
+    if (!res.headersSent) {
+      res.json({ success: true, host, port, message: `PORT ${port} IS OPEN ON HOST` });
+    }
+  });
+
+  socket.on('timeout', () => {
+    socket.destroy();
+    if (!res.headersSent) {
+      res.json({ success: false, host, port, message: `PORT ${port} TIMED OUT (BLOCKED BY FIREWALL)` });
+    }
+  });
+
+  socket.on('error', (err) => {
+    socket.destroy();
+    if (!res.headersSent) {
+      res.json({ success: false, host, port, message: `ERROR: ${err.message}` });
+    }
+  });
+
+  socket.connect(port, host);
+});
+
 // Mount Routes
 router.use('/auth', authRoutes);
 router.use('/registration', registrationRoutes);
