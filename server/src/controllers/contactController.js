@@ -10,15 +10,33 @@ const submitContactMessage = async (req, res, next) => {
   try {
     const contactMessage = await ContactMessage.create(req.validatedBody);
 
-    // Concurrently dispatch organizer alert (received mail) and sender acknowledgment (sent mail)
-    await Promise.allSettled([
-      sendOrganizerContactAlert({ contactMessage }),
-      sendUserContactAcknowledgment({ contactMessage })
-    ]);
-
+    // Send immediate HTTP 201 response to client (<100ms) to prevent reverse-proxy (Netlify) 504 timeouts
     res.status(201).json({
       success: true,
-      message: 'Thank you for reaching out! Your inquiry has been logged, a confirmation receipt has been sent to your email, and our organizing team will get back to you shortly.'
+      message: 'Thank you for reaching out! Your inquiry has been logged, a confirmation receipt has been sent to your email, and our organizing team will get back to you shortly.',
+      data: {
+        id: contactMessage._id,
+        name: contactMessage.name,
+        email: contactMessage.email,
+        subject: contactMessage.subject
+      }
+    });
+
+    // Concurrently dispatch organizer alert (received mail) and sender acknowledgment (sent mail) asynchronously in background
+    Promise.allSettled([
+      sendOrganizerContactAlert({ contactMessage }),
+      sendUserContactAcknowledgment({ contactMessage })
+    ]).then((results) => {
+      results.forEach((outcome, idx) => {
+        const type = idx === 0 ? 'Organizer Alert' : 'User Acknowledgment';
+        if (outcome.status === 'rejected') {
+          console.warn(`[ContactController] ${type} email warning:`, outcome.reason?.message || outcome.reason);
+        } else {
+          console.log(`[ContactController] ${type} email sent successfully.`);
+        }
+      });
+    }).catch((err) => {
+      console.error('[ContactController] Background email dispatch error:', err.message);
     });
   } catch (error) {
     next(error);

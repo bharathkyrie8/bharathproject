@@ -8,16 +8,31 @@ const getTransporter = async () => {
     return transporter;
   }
 
-  const { host, port, user, pass } = env.smtp;
+  const isGmail = (host && host.toLowerCase().includes('gmail')) || (user && user.toLowerCase().includes('@gmail.com'));
 
-  if (host && user && pass) {
-    transporter = nodemailer.createTransport({
-      host,
-      port,
-      secure: port === 465,
-      auth: { user, pass }
-    });
-    console.log(`[Mailer] Initialized SMTP transporter for host: ${host}`);
+  if ((host || isGmail) && user && pass) {
+    const transportConfig = isGmail
+      ? {
+          service: 'gmail',
+          auth: { user, pass },
+          connectionTimeout: 10000,
+          greetingTimeout: 5000,
+          socketTimeout: 15000,
+          tls: { rejectUnauthorized: false }
+        }
+      : {
+          host,
+          port: Number(port) || 587,
+          secure: Number(port) === 465,
+          auth: { user, pass },
+          connectionTimeout: 10000,
+          greetingTimeout: 5000,
+          socketTimeout: 15000,
+          tls: { rejectUnauthorized: false }
+        };
+
+    transporter = nodemailer.createTransport(transportConfig);
+    console.log(`[Mailer] Initialized SMTP transporter for: ${isGmail ? 'Gmail Service' : host}`);
   } else {
     // Development fallback mock
     console.warn('[Mailer] SMTP credentials not provided. Emails will be logged to console in dev mode.');
