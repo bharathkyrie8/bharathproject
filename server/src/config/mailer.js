@@ -67,7 +67,38 @@ const sendMailSafe = async ({ from, to, replyTo, subject, html, text }) => {
   const brevoKey = process.env.BREVO_API_KEY || env.smtp.brevoApiKey;
   const resendKey = process.env.RESEND_API_KEY || env.smtp.resendApiKey;
 
-  // 1. Google Apps Script Webhook (HTTPS 443 - zero block on Render free tier)
+  // 1. Brevo HTTPS REST API (Port 443 - zero block on Render free tier, fast and reliable)
+  if (brevoKey) {
+    try {
+      console.log(`[Mailer:Brevo] Dispatching email to ${to} via Brevo REST API...`);
+      const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          'api-key': brevoKey,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          sender: { name: 'Salem Cycle Marathon 2026', email: fromEmail },
+          to: [{ email: to }],
+          replyTo: replyTo ? { email: replyTo } : { email: fromEmail },
+          subject,
+          htmlContent: html,
+          textContent: text || undefined
+        }),
+        signal: AbortSignal.timeout(12000)
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(`Brevo API Error (${response.status}): ${data.message || JSON.stringify(data)}`);
+      }
+      console.log(`[Mailer:Brevo] Sent successfully to ${to} (Message ID: ${data.messageId || 'OK'})`);
+      return { success: true, method: 'brevo_api', messageId: data.messageId, data };
+    } catch (err) {
+      console.warn(`[Mailer:Brevo] Brevo dispatch warning: ${err.message}. Falling back...`);
+    }
+  }
+
+  // 2. Google Apps Script Webhook (HTTPS 443 - fallback)
   if (scriptUrl) {
     try {
       console.log(`[Mailer:GAS] Dispatching email to ${to} via Google Apps Script Webhook...`);
@@ -96,33 +127,6 @@ const sendMailSafe = async ({ from, to, replyTo, subject, html, text }) => {
       return { success: true, method: 'google_apps_script', data };
     } catch (err) {
       console.warn(`[Mailer:GAS] Webhook dispatch warning: ${err.message}. Falling back...`);
-    }
-  }
-
-  // 2. Brevo HTTPS REST API (Port 443 - zero block on Render free tier)
-  if (brevoKey) {
-    try {
-      console.log(`[Mailer:Brevo] Dispatching email to ${to} via Brevo REST API...`);
-      const response = await fetch('https://api.brevo.com/v3/smtp/email', {
-        method: 'POST',
-        headers: {
-          'api-key': brevoKey,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          sender: { name: 'Salem Cycle Marathon', email: fromEmail },
-          to: [{ email: to }],
-          replyTo: replyTo ? { email: replyTo } : { email: fromEmail },
-          subject,
-          htmlContent: html
-        }),
-        signal: AbortSignal.timeout(12000)
-      });
-      const data = await response.json();
-      console.log(`[Mailer:Brevo] Sent successfully to ${to}:`, data);
-      return { success: true, method: 'brevo_api', data };
-    } catch (err) {
-      console.warn(`[Mailer:Brevo] Brevo dispatch warning: ${err.message}. Falling back...`);
     }
   }
 
