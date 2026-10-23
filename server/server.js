@@ -65,6 +65,9 @@ if (env.nodeEnv !== 'test') {
 // Rate Limiting on API endpoints
 app.use('/api', generalLimiter);
 
+// Favicon handler
+app.get('/favicon.ico', (req, res) => res.status(204).end());
+
 // Welcome Root Route
 app.get('/', (req, res) => {
   res.status(200).json({

@@ -134,6 +134,9 @@ export const adminToggleRegistration = async (isOpen, reason = '') => {
   return res.data;
 };
 
-export const adminExportCsvUrl = '/api/v1/admin/export-csv';
+const configuredBase = import.meta.env.VITE_API_URL || '/api/v1';
+export const adminExportCsvUrl = configuredBase.endsWith('/api/v1')
+  ? `${configuredBase}/admin/export-csv`
+  : `${configuredBase}/api/v1/admin/export-csv`;
 
 export default api;

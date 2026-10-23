@@ -10,6 +10,24 @@ const galleryRoutes = require('./galleryRoutes');
 const contactRoutes = require('./contactRoutes');
 const adminRoutes = require('./adminRoutes');
 
+// API Root Directory
+router.get('/', (req, res) => {
+  res.status(200).json({
+    status: 'ONLINE',
+    message: 'Salem Cycle Marathon 2026 API v1',
+    endpoints: {
+      health: '/api/v1/health',
+      event: '/api/v1/event',
+      categories: '/api/v1/categories',
+      gallery: '/api/v1/gallery',
+      registration: '/api/v1/registration',
+      payment: '/api/v1/payment',
+      contact: '/api/v1/contact',
+      admin: '/api/v1/admin'
+    }
+  });
+});
+
 // API Health Check
 router.get('/health', (req, res) => {
   res.status(200).json({
