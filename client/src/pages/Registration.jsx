@@ -106,7 +106,8 @@ const Registration = () => {
       priceInr: 699,
       minAge: 18,
       description: 'Premier endurance challenge for seasoned riders along Salem bypass hills. Includes official RFID chip & podium trophies.',
-      deliverables: ['RFID Timing Chip', 'Finisher Trophy Medal', 'Dry-Fit Cycling Jersey', 'Kauvery Hospital Breakfast', 'Digital Certificate']
+      deliverables: ['RFID Timing Chip', 'Finisher Trophy Medal', 'Dry-Fit Cycling Jersey', 'Kauvery Hospital Breakfast', 'Digital Certificate'],
+      benefitsIncluded: ['RFID Timing Chip', 'Finisher Trophy Medal', 'Dry-Fit Cycling Jersey', 'Kauvery Hospital Breakfast', 'Digital Certificate']
     },
     {
       _id: 'cat-10k',
@@ -118,7 +119,8 @@ const Registration = () => {
       priceInr: 499,
       minAge: 16,
       description: 'The definitive test of pacing and endurance. Fast 4-lane course with hydration stations every 2.5 KM.',
-      deliverables: ['RFID Timing Chip', 'Finisher Medal', 'Event T-Shirt', 'Kauvery Hospital Breakfast', 'Digital Certificate']
+      deliverables: ['RFID Timing Chip', 'Finisher Medal', 'Event T-Shirt', 'Kauvery Hospital Breakfast', 'Digital Certificate'],
+      benefitsIncluded: ['RFID Timing Chip', 'Finisher Medal', 'Event T-Shirt', 'Kauvery Hospital Breakfast', 'Digital Certificate']
     },
     {
       _id: 'cat-5k',
@@ -130,7 +132,8 @@ const Registration = () => {
       priceInr: 349,
       minAge: 12,
       description: 'Open to youth, beginners, and families. Celebrate healthy hearts and green cycling culture in Salem.',
-      deliverables: ['Finisher Medal', 'Event T-Shirt', 'Kauvery Hospital Breakfast', 'Participation Certificate', 'Goodie Bag']
+      deliverables: ['Finisher Medal', 'Event T-Shirt', 'Kauvery Hospital Breakfast', 'Participation Certificate', 'Goodie Bag'],
+      benefitsIncluded: ['Finisher Medal', 'Event T-Shirt', 'Kauvery Hospital Breakfast', 'Participation Certificate', 'Goodie Bag']
     }
   ];
 
@@ -141,15 +144,36 @@ const Registration = () => {
         setCategories(list);
         const preselected = searchParams.get('category');
         if (preselected) {
-          const match = list.find((c) => c.slug === preselected || c._id === preselected || c.code === preselected);
+          const match = list.find((c) =>
+            c.slug === preselected ||
+            c._id === preselected ||
+            c.code === preselected ||
+            String(c.distanceKm) === preselected ||
+            String(c.priceInr) === preselected
+          );
           if (match) setSelectedCategory(match);
+          else if (list.length > 0) setSelectedCategory(list[0]);
         } else if (list.length > 0) {
           setSelectedCategory(list[0]);
         }
       })
-      .catch(() => {
+      .catch((err) => {
+        console.warn('API getCategories error, using default fallback categories:', err);
         setCategories(defaultCategories);
-        setSelectedCategory(defaultCategories[0]);
+        const preselected = searchParams.get('category');
+        if (preselected) {
+          const match = defaultCategories.find((c) =>
+            c.slug === preselected ||
+            c._id === preselected ||
+            c.code === preselected ||
+            String(c.distanceKm) === preselected ||
+            String(c.priceInr) === preselected
+          );
+          if (match) setSelectedCategory(match);
+          else setSelectedCategory(defaultCategories[0]);
+        } else {
+          setSelectedCategory(defaultCategories[0]);
+        }
       });
 
     // Fetch UPI details for direct pay
@@ -461,85 +485,165 @@ const Registration = () => {
                     </span>
                   </div>
 
-                  {/* Interactive Cards */}
+                  {/* Interactive Cards (Converts to luxury black box when clicked) */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
                     {categories.map((cat) => {
-                      const isSelected = selectedCategory?._id === cat._id;
+                      const isSelected = Boolean(
+                        selectedCategory && (
+                          selectedCategory._id === cat._id ||
+                          selectedCategory.slug === cat.slug ||
+                          (selectedCategory.code && selectedCategory.code === cat.code) ||
+                          selectedCategory.priceInr === cat.priceInr
+                        )
+                      );
                       return (
                         <div
-                          key={cat._id}
+                          key={cat._id || cat.slug}
                           onClick={() => setSelectedCategory(cat)}
                           style={{
                             border: isSelected ? '2px solid #C59A5A' : '1px solid rgba(29, 30, 32, 0.12)',
-                            backgroundColor: isSelected ? '#FFFDF9' : '#FFFFFF',
+                            backgroundColor: isSelected ? '#0E1014' : '#FFFFFF',
+                            color: isSelected ? '#FAF7F2' : '#1D1E20',
                             borderRadius: 4,
                             padding: '24px 28px',
                             cursor: 'pointer',
-                            transition: 'all 0.3s ease',
-                            boxShadow: isSelected ? '0 8px 24px rgba(197, 154, 90, 0.15)' : 'none',
+                            transition: 'all 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
+                            boxShadow: isSelected
+                              ? '0 16px 36px rgba(0, 0, 0, 0.45), 0 0 20px rgba(197, 154, 90, 0.25)'
+                              : '0 2px 8px rgba(0, 0, 0, 0.03)',
+                            transform: isSelected ? 'translateY(-2px)' : 'none',
                             position: 'relative'
                           }}
                         >
+                          {/* Selected Pass Ribbon/Badge */}
+                          {isSelected && (
+                            <div
+                              style={{
+                                position: 'absolute',
+                                top: -10,
+                                right: 20,
+                                backgroundColor: '#C59A5A',
+                                color: '#0E1014',
+                                fontSize: '0.68rem',
+                                fontWeight: 800,
+                                letterSpacing: '0.14em',
+                                textTransform: 'uppercase',
+                                padding: '3px 12px',
+                                borderRadius: 2,
+                                boxShadow: '0 4px 12px rgba(197, 154, 90, 0.35)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 4
+                              }}
+                            >
+                              <span>SELECTED PASS ✓</span>
+                            </div>
+                          )}
+
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
                             <div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                <span style={{ 
-                                  backgroundColor: isSelected ? '#1D1E20' : '#FAF5EE', 
-                                  color: isSelected ? '#FAF7F2' : '#8C6830', 
-                                  fontSize: '0.75rem', 
-                                  fontWeight: 700, 
-                                  padding: '4px 10px', 
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                                <span style={{
+                                  backgroundColor: isSelected ? '#C59A5A' : '#FAF5EE',
+                                  color: isSelected ? '#0E1014' : '#8C6830',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 700,
+                                  padding: '4px 12px',
                                   borderRadius: 20,
                                   letterSpacing: '0.05em'
                                 }}>
                                   {cat.distanceKm} KM
                                 </span>
                                 {cat.timingType === 'TIMED' ? (
-                                  <span style={{ fontSize: '0.7rem', color: '#1B6A50', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                                  <span style={{
+                                    fontSize: '0.7rem',
+                                    color: isSelected ? '#4ADE80' : '#1B6A50',
+                                    backgroundColor: isSelected ? 'rgba(74, 222, 128, 0.14)' : 'transparent',
+                                    padding: isSelected ? '2px 8px' : '0',
+                                    borderRadius: 4,
+                                    fontWeight: 700,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.08em'
+                                  }}>
                                     ● Official RFID Timed
                                   </span>
                                 ) : (
-                                  <span style={{ fontSize: '0.7rem', color: '#888', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                                  <span style={{
+                                    fontSize: '0.7rem',
+                                    color: isSelected ? '#93C5FD' : '#888',
+                                    backgroundColor: isSelected ? 'rgba(147, 197, 253, 0.14)' : 'transparent',
+                                    padding: isSelected ? '2px 8px' : '0',
+                                    borderRadius: 4,
+                                    fontWeight: 600,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.08em'
+                                  }}>
                                     ● Open Community Ride
                                   </span>
                                 )}
                               </div>
 
-                              <h4 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.35rem', fontWeight: 600, color: '#1D1E20', marginTop: 8 }}>
+                              <h4 style={{
+                                fontFamily: "'Playfair Display', serif",
+                                fontSize: '1.35rem',
+                                fontWeight: 600,
+                                color: isSelected ? '#FAF7F2' : '#1D1E20',
+                                marginTop: 8
+                              }}>
                                 {cat.name}
                               </h4>
 
-                              <p style={{ color: '#666', fontSize: '0.88rem', marginTop: 4, maxWidth: 480, lineHeight: 1.5 }}>
+                              <p style={{
+                                color: isSelected ? '#C0C4CC' : '#666',
+                                fontSize: '0.88rem',
+                                marginTop: 4,
+                                maxWidth: 480,
+                                lineHeight: 1.5
+                              }}>
                                 {cat.description}
                               </p>
                             </div>
 
                             <div style={{ textAlign: 'right' }}>
-                              <div style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.8rem', fontWeight: 700, color: '#1D1E20' }}>
+                              <div style={{
+                                fontFamily: "'Playfair Display', serif",
+                                fontSize: '1.8rem',
+                                fontWeight: 700,
+                                color: isSelected ? '#F3BA63' : '#1D1E20'
+                              }}>
                                 ₹{cat.priceInr}
                               </div>
-                              <span style={{ fontSize: '0.75rem', color: '#888' }}>Min Age: {cat.minAge} Yrs</span>
+                              <span style={{ fontSize: '0.75rem', color: isSelected ? '#A0A4AC' : '#888' }}>
+                                Min Age: {cat.minAge} Yrs
+                              </span>
                             </div>
                           </div>
 
                           {/* Included deliverable chips */}
-                          <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid rgba(29,30,32,0.06)', display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                            {(cat.deliverables || ['Official Jersey', 'Finisher Medal', 'RFID Bib', 'Hot Breakfast', 'E-Certificate']).map((del, dIdx) => (
-                              <span 
+                          <div style={{
+                            marginTop: 16,
+                            paddingTop: 14,
+                            borderTop: isSelected ? '1px solid rgba(255, 255, 255, 0.12)' : '1px solid rgba(29,30,32,0.06)',
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            gap: 8
+                          }}>
+                            {(cat.benefitsIncluded || cat.deliverables || ['Official Jersey', 'Finisher Medal', 'RFID Bib', 'Hot Breakfast', 'E-Certificate']).map((del, dIdx) => (
+                              <span
                                 key={dIdx}
-                                style={{ 
-                                  fontSize: '0.72rem', 
-                                  backgroundColor: '#FAF7F2', 
-                                  border: '1px solid rgba(29,30,32,0.08)', 
-                                  color: '#555', 
-                                  padding: '3px 8px', 
-                                  borderRadius: 2, 
-                                  display: 'flex', 
-                                  alignItems: 'center', 
-                                  gap: 4 
+                                style={{
+                                  fontSize: '0.72rem',
+                                  backgroundColor: isSelected ? 'rgba(255, 255, 255, 0.08)' : '#FAF7F2',
+                                  border: isSelected ? '1px solid rgba(197, 154, 90, 0.35)' : '1px solid rgba(29, 30, 32, 0.08)',
+                                  color: isSelected ? '#EDE9E1' : '#555',
+                                  padding: '4px 10px',
+                                  borderRadius: 2,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 5
                                 }}
                               >
-                                <CheckCircle2 className="w-3 h-3 text-amber-600" />
+                                <CheckCircle2 className={`w-3.5 h-3.5 ${isSelected ? 'text-amber-400' : 'text-amber-600'}`} />
                                 <span>{del}</span>
                               </span>
                             ))}

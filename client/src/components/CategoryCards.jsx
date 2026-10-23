@@ -89,7 +89,14 @@ const CategoryCards = ({ categories = [], onSelectCategory = null, selectedCateg
       {/* Grid of Cards */}
       <div className="grid-responsive-1-2-3">
         {items.map((cat, idx) => {
-          const isSelected = selectedCategoryId === cat._id;
+          const isSelected = Boolean(
+            selectedCategoryId && (
+              selectedCategoryId === cat._id ||
+              selectedCategoryId === cat.slug ||
+              selectedCategoryId === cat.code ||
+              (cat.distanceKm && String(cat.distanceKm) === String(selectedCategoryId))
+            )
+          );
           const isHighlighted = idx === 0; // 21.1KM highlighted
 
           return (
@@ -97,16 +104,19 @@ const CategoryCards = ({ categories = [], onSelectCategory = null, selectedCateg
               key={cat._id || cat.slug}
               className={`editorial-frame flex flex-col justify-between p-8 md:p-10 transition-all duration-300 relative ${
                 isSelected
-                  ? 'ring-2 ring-[#C59A5A] shadow-xl bg-white'
+                  ? 'ring-2 ring-[#C59A5A] shadow-2xl bg-[#0E1014] text-[#FAF7F2]'
                   : 'bg-white hover:border-[#C59A5A]'
               }`}
               style={{
-                borderRadius: '2px',
-                border: isSelected ? '1px solid #C59A5A' : '1px solid rgba(29, 30, 32, 0.08)'
+                borderRadius: '4px',
+                border: isSelected ? '2px solid #C59A5A' : '1px solid rgba(29, 30, 32, 0.08)',
+                boxShadow: isSelected
+                  ? '0 16px 36px rgba(0, 0, 0, 0.4), 0 0 20px rgba(197, 154, 90, 0.25)'
+                  : undefined
               }}
             >
               {/* Highlight Badge */}
-              {isHighlighted && (
+              {isHighlighted && !isSelected && (
                 <div
                   className="absolute -top-3 left-8 px-3 py-1 bg-[#1D1E20] text-[#FAF7F2] text-[10px] font-semibold tracking-luxury uppercase"
                   style={{ letterSpacing: '0.2em' }}
@@ -114,16 +124,28 @@ const CategoryCards = ({ categories = [], onSelectCategory = null, selectedCateg
                   Featured Endurance
                 </div>
               )}
+              {isSelected && (
+                <div
+                  className="absolute -top-3 left-8 px-3 py-1 bg-[#C59A5A] text-[#0E1014] text-[10px] font-bold tracking-luxury uppercase"
+                  style={{ letterSpacing: '0.2em' }}
+                >
+                  Selected Pass ✓
+                </div>
+              )}
 
               <div>
                 {/* Distance & Timing Type */}
                 <div className="flex items-center justify-between mb-4">
-                  <span className="text-4xl md:text-5xl font-serif text-[#1D1E20]">
+                  <span className={`text-4xl md:text-5xl font-serif ${isSelected ? 'text-[#FAF7F2]' : 'text-[#1D1E20]'}`}>
                     {cat.distanceKm} <span className="text-xl font-sans">KM</span>
                   </span>
                   <span
                     className={`px-3 py-1 text-[10px] tracking-wider uppercase font-semibold rounded-full border ${
-                      cat.timingType === 'TIMED'
+                      isSelected
+                        ? cat.timingType === 'TIMED'
+                          ? 'bg-[#4ADE80]/20 text-[#4ADE80] border-[#4ADE80]/40'
+                          : 'bg-blue-400/20 text-blue-300 border-blue-400/40'
+                        : cat.timingType === 'TIMED'
                         ? 'bg-[#155E47]/10 text-[#155E47] border-[#155E47]/20'
                         : 'bg-blue-500/10 text-blue-600 border-blue-500/20'
                     }`}
@@ -133,27 +155,27 @@ const CategoryCards = ({ categories = [], onSelectCategory = null, selectedCateg
                 </div>
 
                 {/* Category Title */}
-                <h3 className="font-heading text-xl md:text-2xl text-[#1D1E20] mb-3">
+                <h3 className={`font-heading text-xl md:text-2xl mb-3 ${isSelected ? 'text-[#FAF7F2]' : 'text-[#1D1E20]'}`}>
                   {cat.name}
                 </h3>
 
                 {/* Price Display */}
-                <div className="mb-6 pb-6 border-b border-[rgba(29,30,32,0.06)] flex items-baseline gap-2">
-                  <span className="text-3xl font-serif font-semibold text-[#1D1E20]">
+                <div className={`mb-6 pb-6 border-b flex items-baseline gap-2 ${isSelected ? 'border-white/10' : 'border-[rgba(29,30,32,0.06)]'}`}>
+                  <span className={`text-3xl font-serif font-semibold ${isSelected ? 'text-[#F3BA63]' : 'text-[#1D1E20]'}`}>
                     ₹{cat.priceInr}
                   </span>
-                  <span className="text-xs text-[#64666B] uppercase tracking-wider">
+                  <span className={`text-xs uppercase tracking-wider ${isSelected ? 'text-[#A0A4AC]' : 'text-[#64666B]'}`}>
                     per participant
                   </span>
                 </div>
 
                 {/* Description */}
-                <p className="text-xs text-[#64666B] leading-relaxed mb-6 font-sans">
+                <p className={`text-xs leading-relaxed mb-6 font-sans ${isSelected ? 'text-[#C0C4CC]' : 'text-[#64666B]'}`}>
                   {cat.description}
                 </p>
 
                 {/* Age Eligibility & Minor Rule */}
-                <div className="flex items-center gap-2 mb-6 p-3 bg-[#FAF7F2] rounded-sm text-xs text-[#1D1E20]">
+                <div className={`flex items-center gap-2 mb-6 p-3 rounded-sm text-xs ${isSelected ? 'bg-white/10 text-[#FAF7F2]' : 'bg-[#FAF7F2] text-[#1D1E20]'}`}>
                   <ShieldAlert size={16} className="text-[#C59A5A] shrink-0" />
                   <span>
                     Minimum Age: <strong>{cat.minAge} Years</strong>{' '}
@@ -163,12 +185,12 @@ const CategoryCards = ({ categories = [], onSelectCategory = null, selectedCateg
 
                 {/* Benefits Included List */}
                 <div className="space-y-2 mb-8">
-                  <span className="text-[10px] tracking-[0.2em] uppercase font-semibold text-[#8B8E96] block mb-2">
+                  <span className={`text-[10px] tracking-[0.2em] uppercase font-semibold block mb-2 ${isSelected ? 'text-[#C59A5A]' : 'text-[#8B8E96]'}`}>
                     Kit & Benefits:
                   </span>
                   {(cat.benefitsIncluded || ['Finisher Medal', 'Breakfast', 'Certificate']).map((b) => (
-                    <div key={b} className="flex items-center gap-2 text-xs text-[#2D3036]">
-                      <CheckCircle2 size={14} className="text-[#155E47] shrink-0" />
+                    <div key={b} className={`flex items-center gap-2 text-xs ${isSelected ? 'text-[#FAF7F2]' : 'text-[#2D3036]'}`}>
+                      <CheckCircle2 size={14} className={isSelected ? 'text-[#C59A5A] shrink-0' : 'text-[#155E47] shrink-0'} />
                       <span>{b}</span>
                     </div>
                   ))}

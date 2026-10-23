@@ -89,9 +89,11 @@ app.use(errorHandler);
 let server = null;
 
 if (require.main === module) {
+  const { ensureDatabaseRestored } = require('./src/utils/autoRestore');
   const startServer = async () => {
     try {
       await connectDB();
+      await ensureDatabaseRestored();
       server = app.listen(env.port, () => {
         console.log(`=======================================================`);
         console.log(` 🚴 SALEM CYCLE MARATHON 2026 API SERVER`);

@@ -1,5 +1,6 @@
 const Category = require('../models/Category');
 const { logAdminAction } = require('../services/auditService');
+const { ensureDatabaseRestored } = require('../utils/autoRestore');
 
 /**
  * Get active registration categories for public website
@@ -7,7 +8,13 @@ const { logAdminAction } = require('../services/auditService');
  */
 const getCategories = async (req, res, next) => {
   try {
-    const categories = await Category.find({ isActive: true }).sort({ displayOrder: 1, distanceKm: -1 });
+    let categories = await Category.find({ isActive: true }).sort({ displayOrder: 1, distanceKm: -1 });
+
+    // Self-healing: If categories were deleted or missing, auto-restore immediately
+    if (!categories || categories.length < 3) {
+      await ensureDatabaseRestored();
+      categories = await Category.find({ isActive: true }).sort({ displayOrder: 1, distanceKm: -1 });
+    }
 
     res.status(200).json({
       success: true,
