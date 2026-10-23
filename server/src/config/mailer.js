@@ -73,6 +73,7 @@ const sendMailSafe = async ({ from, to, replyTo, subject, html, text }) => {
       console.log(`[Mailer:GAS] Dispatching email to ${to} via Google Apps Script Webhook...`);
       const response = await fetch(scriptUrl, {
         method: 'POST',
+        redirect: 'follow',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           to,
@@ -84,7 +85,13 @@ const sendMailSafe = async ({ from, to, replyTo, subject, html, text }) => {
         }),
         signal: AbortSignal.timeout(12000)
       });
-      const data = await response.json();
+      const rawText = await response.text();
+      let data;
+      try {
+        data = JSON.parse(rawText);
+      } catch {
+        data = { response: rawText };
+      }
       console.log(`[Mailer:GAS] Sent successfully to ${to}:`, data);
       return { success: true, method: 'google_apps_script', data };
     } catch (err) {
