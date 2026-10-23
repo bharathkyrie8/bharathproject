@@ -354,10 +354,17 @@ const sendUserContactAcknowledgment = async ({ contactMessage }) => {
 const sendRegistrationSubmittedEmail = async ({ registration, payment }) => {
   try {
     const transporter = await getTransporter();
-    const p = registration.participant;
-    const c = registration.categorySnapshot;
+    const p = registration.participant || {};
+    const c = registration.categorySnapshot || {};
     const refId = registration.registrationId;
+    if (!p.email) {
+      console.warn('[EmailService] Participant email missing, skipping email');
+      return null;
+    }
+    const categoryName = c.name || 'Cycling Marathon';
+    const distanceKm = c.distanceKm || 'Official Distance';
     const isUpi = (payment && payment.paymentMode === 'DIRECT_UPI') || registration.paymentProof?.paymentMode === 'DIRECT_UPI';
+    const utr = payment?.upiTransactionId || registration.paymentProof?.utrNumber || (isUpi ? 'Pending UPI Submission' : 'Online Payment');
 
     const htmlContent = `
       <!DOCTYPE html>
@@ -389,21 +396,21 @@ const sendRegistrationSubmittedEmail = async ({ registration, payment }) => {
             <div class="badge">REGISTRATION SUBMITTED & UNDER VERIFICATION</div>
           </div>
           <div class="content">
-            <p>Dear <strong>${p.fullName}</strong>,</p>
+            <p>Dear <strong>${p.fullName || 'Participant'}</strong>,</p>
             <p>We have successfully received your registration details for the <strong>Salem Cycle Marathon 2026</strong>.</p>
             
             <div class="alert">
               <strong>Verification in Progress:</strong><br/>
-              Our race verification desk is currently verifying your payment transaction (UTR: <code>${payment?.upiTransactionId || registration.paymentProof?.utrNumber || 'Submitted'}</code>). As soon as verified, your official race pass and bib confirmation ticket will be emailed to you immediately.
+              Our race verification desk is currently verifying your payment transaction (UTR: <code>${utr}</code>). As soon as verified, your official race pass and bib confirmation ticket will be emailed to you immediately.
             </div>
 
             <div class="card">
               <div class="title">Registration Summary</div>
               <div class="row"><span class="label">Registration ID:</span> <span class="val" style="color:#C59A5A; font-family:monospace; font-size:15px;">${refId}</span></div>
-              <div class="row"><span class="label">Rider Name:</span> <span class="val">${p.fullName}</span></div>
-              <div class="row"><span class="label">Category:</span> <span class="val">${c.name} (${c.distanceKm} KM)</span></div>
+              <div class="row"><span class="label">Rider Name:</span> <span class="val">${p.fullName || 'Participant'}</span></div>
+              <div class="row"><span class="label">Category:</span> <span class="val">${categoryName} (${distanceKm} KM)</span></div>
               <div class="row"><span class="label">Registration Fee:</span> <span class="val">₹${registration.amountDueInr}</span></div>
-              <div class="row"><span class="label">Jersey Size:</span> <span class="val">${p.tShirtSize}</span></div>
+              <div class="row"><span class="label">Jersey Size:</span> <span class="val">${p.tShirtSize || 'M'}</span></div>
               <div class="row"><span class="label">Payment Mode:</span> <span class="val">${isUpi ? 'Direct UPI' : 'Online Payment'}</span></div>
             </div>
 
@@ -445,10 +452,12 @@ const sendRegistrationSubmittedEmail = async ({ registration, payment }) => {
 const sendOrganizerRegistrationAlert = async ({ registration, payment }) => {
   try {
     const transporter = await getTransporter();
-    const p = registration.participant;
-    const c = registration.categorySnapshot;
+    const p = registration.participant || {};
+    const c = registration.categorySnapshot || {};
     const refId = registration.registrationId;
-    const utr = payment?.upiTransactionId || registration.paymentProof?.utrNumber || 'N/A';
+    const categoryName = c.name || 'Cycling Marathon';
+    const distanceKm = c.distanceKm || 'Official Distance';
+    const utr = payment?.upiTransactionId || registration.paymentProof?.utrNumber || 'Pending Submission';
     const screenshot = payment?.screenshotUrl || registration.paymentProof?.screenshotUrl;
 
     const htmlContent = `

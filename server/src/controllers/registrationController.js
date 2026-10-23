@@ -24,6 +24,15 @@ const initiateRegistration = async (req, res, next) => {
     // 2. Create Razorpay Payment Order on backend
     const orderDetails = await createRazorpayOrder(registration, category);
 
+    // 3. Dispatch asynchronous email notifications (Participant acknowledgment + Organizer alert)
+    const { sendRegistrationSubmittedEmail, sendOrganizerRegistrationAlert } = require('../services/emailService');
+    sendRegistrationSubmittedEmail({ registration, payment: null }).catch((err) =>
+      console.error('[RegistrationController] Participant submission email error:', err.message)
+    );
+    sendOrganizerRegistrationAlert({ registration, payment: null }).catch((err) =>
+      console.error('[RegistrationController] Organizer alert email error:', err.message)
+    );
+
     res.status(201).json({
       success: true,
       message: 'Registration initiated successfully. Proceed to payment checkout.',
