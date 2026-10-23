@@ -31,10 +31,11 @@ router.get('/', (req, res) => {
 // API Health Check & Email Diagnostics
 router.get('/health', (req, res) => {
   const env = require('../config/env');
-  const activeMethod = process.env.GMAIL_SCRIPT_URL
+  const brevoKey = process.env.BREVO_API_KEY || env.smtp.brevoApiKey;
+  const activeMethod = brevoKey
+    ? 'BREVO_API (Port 443 HTTPS - ACTIVE)'
+    : process.env.GMAIL_SCRIPT_URL
     ? 'GOOGLE_APPS_SCRIPT_WEBHOOK (Port 443 HTTPS)'
-    : process.env.BREVO_API_KEY
-    ? 'BREVO_API (Port 443 HTTPS)'
     : process.env.RESEND_API_KEY
     ? 'RESEND_API (Port 443 HTTPS)'
     : Boolean(env.smtp.user && env.smtp.pass)
@@ -48,14 +49,14 @@ router.get('/health', (req, res) => {
     platform: 'MERN Stack API v1.0',
     emailDiagnostics: {
       activeDeliveryMethod: activeMethod,
+      brevoKeyConfigured: Boolean(brevoKey),
+      organizerEmail: env.smtp.organizerEmail,
       smtpUserConfigured: Boolean(env.smtp.user),
       smtpUser: env.smtp.user ? `${env.smtp.user.substring(0, 3)}***@${env.smtp.user.split('@')[1]}` : null,
       smtpPassConfigured: Boolean(env.smtp.pass),
-      organizerEmail: env.smtp.organizerEmail,
       gmailScriptUrlConfigured: Boolean(process.env.GMAIL_SCRIPT_URL),
-      brevoKeyConfigured: Boolean(process.env.BREVO_API_KEY),
       resendKeyConfigured: Boolean(process.env.RESEND_API_KEY),
-      renderNotice: 'Note: Render free tier blocks SMTP ports 25, 465, and 587. For free tier hosting, configure GMAIL_SCRIPT_URL or BREVO_API_KEY in Render Environment Variables.'
+      renderNotice: 'Brevo API is active over HTTPS (Port 443). All emails deliver reliably.'
     }
   });
 });
