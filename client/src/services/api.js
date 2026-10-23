@@ -140,6 +140,39 @@ export const adminToggleRegistration = async (isOpen, reason = '') => {
   return res.data;
 };
 
+// Admin Category Management
+export const adminGetCategories = async () => {
+  const res = await api.get('/categories/admin/all');
+  return res.data.data;
+};
+
+export const adminUpdateCategory = async (id, data) => {
+  const res = await api.put(`/categories/${id}`, data);
+  return res.data;
+};
+
+export const adminCreateCategory = async (data) => {
+  const res = await api.post('/categories', data);
+  return res.data;
+};
+
+export const adminDeleteCategory = async (id) => {
+  const res = await api.delete(`/categories/${id}`);
+  return res.data;
+};
+
+// Admin Password Management
+export const adminChangePassword = async (currentPassword, newPassword) => {
+  const res = await api.put('/auth/change-password', { currentPassword, newPassword });
+  return res.data;
+};
+
+// Admin Event Settings
+export const adminUpdateEventConfig = async (data) => {
+  const res = await api.put('/event', data);
+  return res.data;
+};
+
 const configuredBase = import.meta.env.VITE_API_URL || '/api/v1';
 export const adminExportCsvUrl = configuredBase.endsWith('/api/v1')
   ? `${configuredBase}/admin/export-csv`

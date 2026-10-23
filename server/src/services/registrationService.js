@@ -1,5 +1,6 @@
 const Registration = require('../models/Registration');
 const Category = require('../models/Category');
+const Event = require('../models/Event');
 const { generateRegistrationId } = require('../utils/idGenerator');
 const { calculateAge } = require('../utils/timeUtils');
 
@@ -8,6 +9,17 @@ const { calculateAge } = require('../utils/timeUtils');
  */
 const createPendingRegistration = async ({ validatedData, meta = {} }) => {
   const { categoryId, fullName, email, phone, dob, gender, bloodGroup, tShirtSize, address, emergencyContact, guardian, termsAccepted, medicalDeclarationAccepted } = validatedData;
+
+  // 0. Verify if public registrations are open
+  const event = await Event.findOne();
+  if (event) {
+    const { isOpen, reason } = event.isRegistrationOpen();
+    if (!isOpen) {
+      const error = new Error(reason || 'Marathon registrations are currently closed.');
+      error.statusCode = 403;
+      throw error;
+    }
+  }
 
   // 1. Fetch category from database (ensuring price is always calculated securely on backend)
   const category = await Category.findById(categoryId);

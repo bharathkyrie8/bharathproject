@@ -274,6 +274,15 @@ const submitUpiPaymentProof = async (req, res, next) => {
     registration.paymentId = payment._id;
     await registration.save();
 
+    // Dispatch asynchronous email notifications (Participant acknowledgment + Organizer alert)
+    const { sendRegistrationSubmittedEmail, sendOrganizerRegistrationAlert } = require('../services/emailService');
+    sendRegistrationSubmittedEmail({ registration, payment }).catch((err) =>
+      console.error('[PaymentController] Participant submission email warning:', err.message)
+    );
+    sendOrganizerRegistrationAlert({ registration, payment }).catch((err) =>
+      console.error('[PaymentController] Organizer alert email warning:', err.message)
+    );
+
     res.status(200).json({
       success: true,
       message: 'Payment proof submitted successfully! Your registration is under verification.',

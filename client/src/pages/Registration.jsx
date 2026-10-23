@@ -30,6 +30,7 @@ import {
   X
 } from 'lucide-react';
 import {
+  getEventConfig,
   getCategories,
   initiateRegistration,
   verifyRazorpayPayment,
@@ -49,6 +50,7 @@ const Registration = () => {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [isMinor, setIsMinor] = useState(false);
   const [calculatedAge, setCalculatedAge] = useState(null);
+  const [eventStatus, setEventStatus] = useState({ isOpen: true, reason: '' });
 
   // Form State
   const [formData, setFormData] = useState({
@@ -180,6 +182,18 @@ const Registration = () => {
     getUpiDetails(699, '')
       .then((data) => setUpiDetails(data))
       .catch(() => console.log('UPI initialized locally'));
+
+    // Check if registrations are open or closed by admin
+    getEventConfig()
+      .then((data) => {
+        if (data && typeof data.isRegistrationOpen === 'boolean') {
+          setEventStatus({
+            isOpen: data.isRegistrationOpen,
+            reason: data.closureReason || 'Online registrations for Salem Cycling Marathon are currently closed.'
+          });
+        }
+      })
+      .catch((err) => console.log('Could not load event status:', err));
   }, [searchParams]);
 
   // Handle Date of Birth and age calculation against event date (30 Oct 2026)
@@ -224,6 +238,10 @@ const Registration = () => {
 
   // Step 1 to Step 2 validation
   const handleGoToDetails = () => {
+    if (!eventStatus.isOpen) {
+      setErrorMsg(eventStatus.reason || 'Online registrations are currently closed by race administration.');
+      return;
+    }
     if (!selectedCategory) {
       setErrorMsg('Please select a marathon category to proceed.');
       return;
@@ -235,6 +253,10 @@ const Registration = () => {
 
   // Step 2 to Step 3 validation
   const handleGoToPayment = () => {
+    if (!eventStatus.isOpen) {
+      setErrorMsg(eventStatus.reason || 'Online registrations are currently closed by race administration.');
+      return;
+    }
     setErrorMsg('');
     if (!formData.fullName.trim()) {
       setErrorMsg('Please enter your full name as printed on your government photo ID.');
@@ -278,6 +300,10 @@ const Registration = () => {
   // Final Payment Submission
   const handleFinalSubmit = async (e) => {
     e.preventDefault();
+    if (!eventStatus.isOpen) {
+      setErrorMsg(eventStatus.reason || 'Online registrations are currently closed by race administration.');
+      return;
+    }
     setErrorMsg('');
     setLoading(true);
 
@@ -398,6 +424,65 @@ const Registration = () => {
             Includes RFID timing chip, official cycling jersey, finisher medal, and hospitality breakfast.
           </p>
         </div>
+
+        {/* REGISTRATION CLOSED NOTICE */}
+        {!eventStatus.isOpen && (
+          <div style={{
+            backgroundColor: '#FFF5F5',
+            border: '2px solid #C85A32',
+            borderRadius: 6,
+            padding: '24px 28px',
+            marginBottom: 36,
+            textAlign: 'center',
+            boxShadow: '0 8px 24px rgba(200, 90, 50, 0.08)'
+          }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 48, height: 48, borderRadius: '50%', backgroundColor: '#FDECEA', marginBottom: 12 }}>
+              <AlertCircle className="w-6 h-6 text-red-600" />
+            </div>
+            <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.5rem', fontWeight: 700, color: '#C85A32', marginBottom: 8 }}>
+              Registrations Are Currently Closed
+            </h3>
+            <p style={{ color: '#555', fontSize: '0.95rem', maxWidth: 640, margin: '0 auto 16px', lineHeight: 1.6 }}>
+              {eventStatus.reason || 'Online registrations for Salem Cycling Marathon are currently closed by race administration. For inquiries or group bookings, please contact the organizers.'}
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <a
+                href="mailto:bharathkyrie8@gmail.com"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  backgroundColor: '#1D1E20',
+                  color: '#FFFFFF',
+                  padding: '10px 20px',
+                  borderRadius: 3,
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  textDecoration: 'none'
+                }}
+              >
+                <Mail className="w-4 h-4" />
+                <span>Contact Organizer</span>
+              </a>
+              <button
+                type="button"
+                onClick={() => navigate('/')}
+                style={{
+                  backgroundColor: 'transparent',
+                  color: '#1D1E20',
+                  border: '1px solid #1D1E20',
+                  padding: '10px 20px',
+                  borderRadius: 3,
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                Return to Homepage
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* =========================================================================
             DESIGN COMPONENT 1: INTERACTIVE STEP WIZARD
@@ -656,8 +741,9 @@ const Registration = () => {
                   <div style={{ marginTop: 28, display: 'flex', justifyContent: 'flex-end' }}>
                     <button
                       onClick={handleGoToDetails}
+                      disabled={!eventStatus.isOpen}
                       style={{
-                        backgroundColor: '#1D1E20',
+                        backgroundColor: !eventStatus.isOpen ? '#999999' : '#1D1E20',
                         color: '#FAF7F2',
                         padding: '14px 32px',
                         border: 'none',
@@ -666,15 +752,15 @@ const Registration = () => {
                         fontSize: '0.85rem',
                         letterSpacing: '0.08em',
                         textTransform: 'uppercase',
-                        cursor: 'pointer',
+                        cursor: !eventStatus.isOpen ? 'not-allowed' : 'pointer',
                         display: 'flex',
                         alignItems: 'center',
                         gap: 8,
                         transition: 'background 0.3s ease'
                       }}
                     >
-                      <span>Proceed to Rider Details</span>
-                      <ChevronRight className="w-4 h-4 text-amber-400" />
+                      <span>{!eventStatus.isOpen ? 'Registrations Closed' : 'Proceed to Rider Details'}</span>
+                      {eventStatus.isOpen && <ChevronRight className="w-4 h-4 text-amber-400" />}
                     </button>
                   </div>
                 </div>
@@ -1040,8 +1126,9 @@ const Registration = () => {
                     <button
                       type="button"
                       onClick={handleGoToPayment}
+                      disabled={!eventStatus.isOpen}
                       style={{
-                        backgroundColor: '#1D1E20',
+                        backgroundColor: !eventStatus.isOpen ? '#999999' : '#1D1E20',
                         color: '#FAF7F2',
                         padding: '14px 32px',
                         border: 'none',
@@ -1050,14 +1137,14 @@ const Registration = () => {
                         fontSize: '0.85rem',
                         letterSpacing: '0.08em',
                         textTransform: 'uppercase',
-                        cursor: 'pointer',
+                        cursor: !eventStatus.isOpen ? 'not-allowed' : 'pointer',
                         display: 'flex',
                         alignItems: 'center',
                         gap: 8
                       }}
                     >
-                      <span>Proceed to Payment</span>
-                      <ChevronRight className="w-4 h-4 text-amber-400" />
+                      <span>{!eventStatus.isOpen ? 'Registrations Closed' : 'Proceed to Payment'}</span>
+                      {eventStatus.isOpen && <ChevronRight className="w-4 h-4 text-amber-400" />}
                     </button>
                   </div>
                 </div>
@@ -1379,10 +1466,10 @@ const Registration = () => {
                     <button
                       type="button"
                       onClick={handleFinalSubmit}
-                      disabled={loading}
+                      disabled={loading || !eventStatus.isOpen}
                       style={{
-                        backgroundColor: '#C59A5A',
-                        color: '#0E1014',
+                        backgroundColor: !eventStatus.isOpen ? '#999999' : '#C59A5A',
+                        color: !eventStatus.isOpen ? '#FFFFFF' : '#0E1014',
                         padding: '16px 36px',
                         border: 'none',
                         borderRadius: 2,
@@ -1390,15 +1477,17 @@ const Registration = () => {
                         fontSize: '0.88rem',
                         letterSpacing: '0.08em',
                         textTransform: 'uppercase',
-                        cursor: loading ? 'not-allowed' : 'pointer',
+                        cursor: (loading || !eventStatus.isOpen) ? 'not-allowed' : 'pointer',
                         display: 'flex',
                         alignItems: 'center',
                         gap: 10,
-                        boxShadow: '0 8px 24px rgba(197, 154, 90, 0.3)'
+                        boxShadow: !eventStatus.isOpen ? 'none' : '0 8px 24px rgba(197, 154, 90, 0.3)'
                       }}
                     >
                       {loading ? (
                         <span>Processing Entry...</span>
+                      ) : !eventStatus.isOpen ? (
+                        <span>Registrations Closed</span>
                       ) : (
                         <>
                           <span>Complete Registration & Confirm</span>

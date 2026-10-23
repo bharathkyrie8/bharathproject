@@ -348,8 +348,186 @@ const sendUserContactAcknowledgment = async ({ contactMessage }) => {
   }
 };
 
+/**
+ * Sends acknowledgment email to participant when registration & payment proof are submitted
+ */
+const sendRegistrationSubmittedEmail = async ({ registration, payment }) => {
+  try {
+    const transporter = await getTransporter();
+    const p = registration.participant;
+    const c = registration.categorySnapshot;
+    const refId = registration.registrationId;
+    const isUpi = (payment && payment.paymentMode === 'DIRECT_UPI') || registration.paymentProof?.paymentMode === 'DIRECT_UPI';
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #FAF7F2; color: #1D1E20; margin: 0; padding: 24px 16px; }
+          .container { max-width: 600px; margin: 0 auto; background: #FFFFFF; border: 1px solid rgba(29,30,32,0.1); border-radius: 8px; overflow: hidden; box-shadow: 0 8px 30px rgba(0,0,0,0.06); }
+          .header { background: #0E1014; padding: 32px 24px; text-align: center; color: #FFFFFF; border-bottom: 2px solid #C59A5A; }
+          .header h1 { margin: 0; font-family: Georgia, serif; font-size: 22px; letter-spacing: 2px; }
+          .header p { margin: 6px 0 0; color: #C59A5A; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; }
+          .badge { display: inline-block; background: #D97706; color: #ffffff; padding: 5px 14px; border-radius: 20px; font-weight: bold; font-size: 12px; margin-top: 14px; }
+          .content { padding: 30px 24px; }
+          .card { background: #FAF7F2; border: 1px solid rgba(29,30,32,0.08); border-radius: 6px; padding: 18px 20px; margin-bottom: 20px; }
+          .title { font-size: 13px; font-weight: bold; color: #8C6830; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; border-bottom: 1px solid rgba(29,30,32,0.08); padding-bottom: 6px; }
+          .row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13.5px; }
+          .label { color: #64666B; }
+          .val { font-weight: 600; color: #1D1E20; }
+          .alert { background: #FFFBEB; border-left: 3px solid #D97706; padding: 14px 16px; border-radius: 4px; font-size: 13px; line-height: 1.6; margin-bottom: 20px; color: #92400E; }
+          .footer { text-align: center; padding: 24px; font-size: 12px; color: #888; background: #FAF7F2; border-top: 1px solid rgba(29,30,32,0.06); }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>SALEM CYCLE MARATHON 2026</h1>
+            <p>Kauvery Hospital Salem • Official Entry</p>
+            <div class="badge">REGISTRATION SUBMITTED & UNDER VERIFICATION</div>
+          </div>
+          <div class="content">
+            <p>Dear <strong>${p.fullName}</strong>,</p>
+            <p>We have successfully received your registration details for the <strong>Salem Cycle Marathon 2026</strong>.</p>
+            
+            <div class="alert">
+              <strong>Verification in Progress:</strong><br/>
+              Our race verification desk is currently verifying your payment transaction (UTR: <code>${payment?.upiTransactionId || registration.paymentProof?.utrNumber || 'Submitted'}</code>). As soon as verified, your official race pass and bib confirmation ticket will be emailed to you immediately.
+            </div>
+
+            <div class="card">
+              <div class="title">Registration Summary</div>
+              <div class="row"><span class="label">Registration ID:</span> <span class="val" style="color:#C59A5A; font-family:monospace; font-size:15px;">${refId}</span></div>
+              <div class="row"><span class="label">Rider Name:</span> <span class="val">${p.fullName}</span></div>
+              <div class="row"><span class="label">Category:</span> <span class="val">${c.name} (${c.distanceKm} KM)</span></div>
+              <div class="row"><span class="label">Registration Fee:</span> <span class="val">₹${registration.amountDueInr}</span></div>
+              <div class="row"><span class="label">Jersey Size:</span> <span class="val">${p.tShirtSize}</span></div>
+              <div class="row"><span class="label">Payment Mode:</span> <span class="val">${isUpi ? 'Direct UPI' : 'Online Payment'}</span></div>
+            </div>
+
+            <div class="card">
+              <div class="title">Race Day & Expo Schedule</div>
+              <p style="margin: 0 0 6px; font-size: 13.5px;"><strong>Venue:</strong> Kauvery Hospital Salem Arena</p>
+              <p style="margin: 0 0 6px; font-size: 13px; color:#555;">#9/50, Trichy Main Road, Seelanaickenpatti, Salem – 636201</p>
+              <p style="margin: 0 0 6px; font-size: 13px; color:#555;"><strong>Bib Expo:</strong> 28 & 29 October 2026 (10 AM – 6 PM IST)</p>
+              <p style="margin: 0; font-size: 13px; color:#555;"><strong>Flag-Off Date:</strong> 30 October 2026 (Assembly 04:30 AM IST)</p>
+            </div>
+          </div>
+          <div class="footer">
+            <p style="margin: 0 0 4px; font-weight: 600; color: #1D1E20;">Salem Cycle Marathon 2026 Organizing Committee</p>
+            <p style="margin: 0;">Kauvery Hospital Salem Desk • Support: ${env.smtp.organizerEmail}</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const mailOptions = {
+      from: env.smtp.from,
+      to: p.email,
+      subject: `[Received: ${refId}] Salem Cycle Marathon 2026 Registration Acknowledgment`,
+      html: htmlContent
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`[EmailService] Registration submitted email sent to participant: ${p.email}`);
+    return info;
+  } catch (error) {
+    console.error(`[EmailService] Error sending registration submitted email:`, error.message);
+  }
+};
+
+/**
+ * Sends immediate organizer notification when a participant registers
+ */
+const sendOrganizerRegistrationAlert = async ({ registration, payment }) => {
+  try {
+    const transporter = await getTransporter();
+    const p = registration.participant;
+    const c = registration.categorySnapshot;
+    const refId = registration.registrationId;
+    const utr = payment?.upiTransactionId || registration.paymentProof?.utrNumber || 'N/A';
+    const screenshot = payment?.screenshotUrl || registration.paymentProof?.screenshotUrl;
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0A0C10; color: #E2E8F0; margin: 0; padding: 24px 16px; }
+          .container { max-width: 620px; margin: 0 auto; background: #131720; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; overflow: hidden; box-shadow: 0 16px 40px rgba(0,0,0,0.6); }
+          .header { background: #0E1014; border-bottom: 2px solid #C59A5A; padding: 24px; text-align: left; }
+          .badge { display: inline-block; background: #C59A5A; color: #0E1014; font-size: 11px; font-weight: 800; letter-spacing: 1px; padding: 4px 10px; border-radius: 3px; text-transform: uppercase; margin-bottom: 8px; }
+          .title { margin: 0; font-size: 20px; color: #FFF; font-family: Georgia, serif; }
+          .body { padding: 24px; }
+          .dossier-card { background: #1A1F2B; border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 20px; margin-bottom: 20px; }
+          .row { display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.06); padding: 8px 0; font-size: 13.5px; }
+          .row:last-child { border-bottom: none; }
+          .field { color: #8E929B; text-transform: uppercase; font-size: 11px; font-weight: 600; }
+          .val { color: #FFF; font-weight: 600; text-align: right; }
+          .btn-action { background: #C59A5A; color: #0E1014; font-weight: 700; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; text-decoration: none; padding: 12px 24px; border-radius: 3px; display: inline-block; }
+          .footer { background: #0E1014; padding: 16px 24px; text-align: center; font-size: 11.5px; color: #646872; }
+          a { color: #C59A5A; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <div class="badge">New Registration • Action Required</div>
+            <h2 class="title">New Marathon Entry Received</h2>
+            <div style="font-size: 12px; color: #A0A4AE; margin-top: 4px;">Pass ID: <strong>#${refId}</strong></div>
+          </div>
+          <div class="body">
+            <div class="dossier-card">
+              <div class="row"><span class="field">Participant Name:</span> <span class="val">${p.fullName}</span></div>
+              <div class="row"><span class="field">Email Address:</span> <span class="val"><a href="mailto:${p.email}">${p.email}</a></span></div>
+              <div class="row"><span class="field">Mobile Number:</span> <span class="val">${p.phone}</span></div>
+              <div class="row"><span class="field">Category:</span> <span class="val" style="color:#C59A5A;">${c.name} (${c.distanceKm} KM)</span></div>
+              <div class="row"><span class="field">Amount Due:</span> <span class="val">₹${registration.amountDueInr}</span></div>
+              <div class="row"><span class="field">Payment Mode:</span> <span class="val">${payment?.paymentMode || 'Direct UPI'}</span></div>
+              <div class="row"><span class="field">UPI Reference / UTR:</span> <span class="val" style="font-family:monospace; color:#4ADE80;">${utr}</span></div>
+              <div class="row"><span class="field">Jersey Size:</span> <span class="val">${p.tShirtSize}</span></div>
+              <div class="row"><span class="field">Emergency Contact:</span> <span class="val">${p.emergencyContact?.name || 'N/A'} (${p.emergencyContact?.phone || ''})</span></div>
+              ${screenshot ? `<div class="row"><span class="field">Screenshot:</span> <span class="val"><a href="${screenshot}" target="_blank">View Uploaded Slip ↗</a></span></div>` : ''}
+            </div>
+
+            <div style="text-align: center; margin: 24px 0 12px;">
+              <a href="http://localhost:5173/admin" class="btn-action">
+                Open Admin Console & Verify Bib →
+              </a>
+            </div>
+          </div>
+          <div class="footer">
+            Salem Cycle Marathon 2026 Admin Alert System • Kauvery Hospital Salem Desk
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const mailOptions = {
+      from: env.smtp.from,
+      to: env.smtp.organizerEmail,
+      replyTo: p.email,
+      subject: `🚴 [New Registration: ${refId}] ${p.fullName} — ${c.name} (UTR: ${utr})`,
+      html: htmlContent
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`[EmailService] Organizer registration alert sent to ${env.smtp.organizerEmail}`);
+    return info;
+  } catch (error) {
+    console.error(`[EmailService] Error sending organizer registration alert:`, error.message);
+  }
+};
+
 module.exports = {
   sendRegistrationConfirmationEmail,
   sendOrganizerContactAlert,
-  sendUserContactAcknowledgment
+  sendUserContactAcknowledgment,
+  sendRegistrationSubmittedEmail,
+  sendOrganizerRegistrationAlert
 };

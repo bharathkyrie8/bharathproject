@@ -21,7 +21,14 @@ import {
   Calendar,
   Phone,
   Mail,
-  ExternalLink
+  ExternalLink,
+  Layers,
+  Settings,
+  KeyRound,
+  Edit2,
+  Save,
+  X,
+  Power
 } from 'lucide-react';
 import { 
   adminLogin, 
@@ -33,6 +40,9 @@ import {
   adminVerifyUpi, 
   adminRejectUpi, 
   adminToggleRegistration,
+  adminGetCategories,
+  adminUpdateCategory,
+  adminChangePassword,
   adminExportCsvUrl 
 } from '../services/api';
 
@@ -46,14 +56,42 @@ const AdminPanel = () => {
   const [submittingLogin, setSubmittingLogin] = useState(false);
 
   // Tabs & Views
-  const [activeTab, setActiveTab] = useState('pending'); // 'pending' | 'participants' | 'overview'
+  const [activeTab, setActiveTab] = useState('pending'); // 'pending' | 'participants' | 'categories' | 'settings'
 
   // Data states
   const [stats, setStats] = useState(null);
   const [pendingUpiList, setPendingUpiList] = useState([]);
   const [participants, setParticipants] = useState([]);
+  const [categoriesList, setCategoriesList] = useState([]);
   const [loadingData, setLoadingData] = useState(false);
   const [actionFeedback, setActionFeedback] = useState(null);
+
+  // Category Edit State
+  const [editingCategory, setEditingCategory] = useState(null);
+  const [editCategoryForm, setEditCategoryForm] = useState({
+    name: '',
+    priceInr: 0,
+    distanceKm: 0,
+    minAge: 18,
+    maxCapacity: 1000,
+    timingType: 'TIMED',
+    description: '',
+    isActive: true
+  });
+  const [savingCategory, setSavingCategory] = useState(false);
+
+  // Password Reset Form State
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [submittingPassword, setSubmittingPassword] = useState(false);
+  const [passwordFeedback, setPasswordFeedback] = useState(null);
+
+  // Registration Closure Setting
+  const [closureReasonInput, setClosureReasonInput] = useState('');
+  const [submittingClosure, setSubmittingClosure] = useState(false);
 
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState('');
@@ -115,19 +153,84 @@ const AdminPanel = () => {
   const loadDashboardData = async () => {
     setLoadingData(true);
     try {
-      const [dashStats, pending, partData] = await Promise.all([
+      const [dashStats, pending, partData, cats] = await Promise.all([
         adminGetDashboard().catch(() => null),
         adminGetPendingUpi().catch(() => []),
-        adminGetParticipants({ page: 1, limit: 100 }).catch(() => ({ data: [] }))
+        adminGetParticipants({ page: 1, limit: 100 }).catch(() => ({ data: [] })),
+        adminGetCategories().catch(() => [])
       ]);
 
-      if (dashStats) setStats(dashStats);
+      if (dashStats) {
+        setStats(dashStats);
+        if (dashStats.event?.closureReason) {
+          setClosureReasonInput(dashStats.event.closureReason);
+        }
+      }
       if (pending) setPendingUpiList(pending);
       if (partData && partData.data) setParticipants(partData.data);
+      if (cats && cats.length > 0) setCategoriesList(cats);
     } catch (err) {
       console.error('Error fetching admin data:', err);
     } finally {
       setLoadingData(false);
+    }
+  };
+
+  const handleOpenEditCategory = (cat) => {
+    setEditingCategory(cat);
+    setEditCategoryForm({
+      name: cat.name || '',
+      priceInr: cat.priceInr || 0,
+      distanceKm: cat.distanceKm || 0,
+      minAge: cat.minAge || 18,
+      maxCapacity: cat.maxCapacity || 1000,
+      timingType: cat.timingType || 'TIMED',
+      description: cat.description || '',
+      isActive: cat.isActive !== false
+    });
+  };
+
+  const handleSaveCategorySubmit = async (e) => {
+    e.preventDefault();
+    if (!editingCategory) return;
+    setSavingCategory(true);
+    try {
+      const res = await adminUpdateCategory(editingCategory._id, editCategoryForm);
+      setActionFeedback({ success: true, message: res.message || `${editCategoryForm.name} updated successfully in MongoDB Atlas!` });
+      setEditingCategory(null);
+      loadDashboardData();
+    } catch (err) {
+      setActionFeedback({ success: false, message: err.customMessage || 'Failed to update category.' });
+    } finally {
+      setSavingCategory(false);
+    }
+  };
+
+  const handleChangePasswordSubmit = async (e) => {
+    e.preventDefault();
+    setPasswordFeedback(null);
+    if (!passwordForm.currentPassword) {
+      setPasswordFeedback({ success: false, message: 'Please enter your current admin password.' });
+      return;
+    }
+    if (!passwordForm.newPassword || passwordForm.newPassword.length < 8) {
+      setPasswordFeedback({ success: false, message: 'New password must be at least 8 characters long.' });
+      return;
+    }
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordFeedback({ success: false, message: 'New password and confirm password do not match.' });
+      return;
+    }
+
+    setSubmittingPassword(true);
+    try {
+      const res = await adminChangePassword(passwordForm.currentPassword, passwordForm.newPassword);
+      setPasswordFeedback({ success: true, message: res.message || 'Password updated successfully!' });
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    } catch (err) {
+      setPasswordFeedback({ success: false, message: err.customMessage || 'Password update failed. Verify current password.' });
+    } finally {
+      setSubmittingPassword(false);
     }
   };
 
@@ -175,6 +278,23 @@ const AdminPanel = () => {
       loadDashboardData();
     } catch (err) {
       setActionFeedback({ success: false, message: err.customMessage || 'Status toggle failed.' });
+    }
+  };
+
+  const handleSaveRegistrationWithReason = async (isOpen) => {
+    setSubmittingClosure(true);
+    try {
+      const reason = isOpen ? '' : (closureReasonInput || 'Registrations are currently closed by race administration.');
+      const res = await adminToggleRegistration(isOpen, reason);
+      setActionFeedback({ 
+        success: true, 
+        message: res.message || `Registration portal is now ${isOpen ? 'LIVE (OPEN)' : 'CLOSED'}.` 
+      });
+      loadDashboardData();
+    } catch (err) {
+      setActionFeedback({ success: false, message: err.customMessage || 'Failed to update registration status.' });
+    } finally {
+      setSubmittingClosure(false);
     }
   };
 
@@ -512,7 +632,7 @@ const AdminPanel = () => {
           flexWrap: 'wrap',
           gap: 16 
         }}>
-          <div style={{ display: 'flex', gap: 24 }}>
+          <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
             <button
               onClick={() => setActiveTab('pending')}
               style={{
@@ -564,8 +684,53 @@ const AdminPanel = () => {
                 marginBottom: -2
               }}
             >
-              <span>All Participants Directory</span>
+              <span>All Participants</span>
               <span style={{ fontSize: '0.85rem', color: '#888' }}>({participants.length})</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('categories')}
+              style={{
+                background: 'none',
+                border: 'none',
+                borderBottom: activeTab === 'categories' ? '3px solid #C59A5A' : '3px solid transparent',
+                padding: '12px 0',
+                fontFamily: "'Playfair Display', serif",
+                fontSize: '1.15rem',
+                fontWeight: 600,
+                color: activeTab === 'categories' ? '#1D1E20' : '#888',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                marginBottom: -2
+              }}
+            >
+              <Layers className="w-5 h-5 text-amber-700" />
+              <span>Categories & Pricing</span>
+              <span style={{ fontSize: '0.85rem', color: '#888' }}>({categoriesList.length})</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('settings')}
+              style={{
+                background: 'none',
+                border: 'none',
+                borderBottom: activeTab === 'settings' ? '3px solid #C59A5A' : '3px solid transparent',
+                padding: '12px 0',
+                fontFamily: "'Playfair Display', serif",
+                fontSize: '1.15rem',
+                fontWeight: 600,
+                color: activeTab === 'settings' ? '#1D1E20' : '#888',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                marginBottom: -2
+              }}
+            >
+              <KeyRound className="w-5 h-5 text-amber-700" />
+              <span>Settings & Password</span>
             </button>
           </div>
 
@@ -1003,6 +1168,374 @@ const AdminPanel = () => {
           </div>
         )}
 
+        {/* TAB 3: CATEGORIES & PRICING MANAGEMENT */}
+        {activeTab === 'categories' && (
+          <div>
+            <div style={{ marginBottom: 24 }}>
+              <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.4rem', fontWeight: 600, color: '#1D1E20' }}>
+                Marathon Categories & Pricing Control
+              </h3>
+              <p style={{ color: '#666', fontSize: '0.9rem', marginTop: 4 }}>
+                Edit category entry fees, distances, participant capacity, and status directly in MongoDB. Changes immediately reflect across registration cards and checkout.
+              </p>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 24 }}>
+              {categoriesList.map((cat) => (
+                <div 
+                  key={cat._id}
+                  style={{
+                    backgroundColor: '#FFFFFF',
+                    borderRadius: 4,
+                    border: '1px solid rgba(29,30,32,0.12)',
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.03)',
+                    padding: 24,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between'
+                  }}
+                >
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                      <span style={{
+                        backgroundColor: '#FAF7F2',
+                        color: '#C59A5A',
+                        border: '1px solid #C59A5A',
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        padding: '3px 8px',
+                        borderRadius: 3,
+                        letterSpacing: '0.05em'
+                      }}>
+                        {cat.code || cat.slug?.toUpperCase() || `${cat.distanceKm}KM`}
+                      </span>
+                      <span style={{
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        padding: '3px 8px',
+                        borderRadius: 3,
+                        backgroundColor: cat.isActive !== false ? '#EAF5F0' : '#FDECEA',
+                        color: cat.isActive !== false ? '#1B6A50' : '#C85A32'
+                      }}>
+                        {cat.isActive !== false ? 'ACTIVE' : 'INACTIVE'}
+                      </span>
+                    </div>
+
+                    <h4 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.3rem', fontWeight: 700, color: '#1D1E20', marginBottom: 8 }}>
+                      {cat.name}
+                    </h4>
+
+                    <p style={{ fontSize: '0.85rem', color: '#666', marginBottom: 16, lineHeight: 1.5, minHeight: 40 }}>
+                      {cat.description || 'Official competitive cycling distance category.'}
+                    </p>
+
+                    <div style={{ backgroundColor: '#FAF7F2', padding: '14px 16px', borderRadius: 4, marginBottom: 16 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                        <span style={{ fontSize: '0.82rem', color: '#777' }}>Registration Fee:</span>
+                        <span style={{ fontSize: '1.15rem', fontWeight: 700, color: '#1D1E20' }}>₹{cat.priceInr}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                        <span style={{ fontSize: '0.82rem', color: '#777' }}>Race Distance:</span>
+                        <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#1D1E20' }}>{cat.distanceKm} KM</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                        <span style={{ fontSize: '0.82rem', color: '#777' }}>Timing Type:</span>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#555' }}>{cat.timingType || 'TIMED'}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: '0.82rem', color: '#777' }}>Rider Capacity:</span>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#555' }}>
+                          {cat.registeredCount || 0} / {cat.maxCapacity || 1000} registered
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => handleOpenEditCategory(cat)}
+                    style={{
+                      width: '100%',
+                      backgroundColor: '#1D1E20',
+                      color: '#FFFFFF',
+                      border: 'none',
+                      padding: '12px 16px',
+                      borderRadius: 3,
+                      fontSize: '0.82rem',
+                      fontWeight: 700,
+                      letterSpacing: '0.04em',
+                      textTransform: 'uppercase',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                      transition: 'background-color 0.2s'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#C59A5A'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#1D1E20'}
+                  >
+                    <Edit2 className="w-4 h-4" />
+                    <span>Edit & Update Category</span>
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 4: SETTINGS, REGISTRATION CLOSURE & PASSWORD RESET */}
+        {activeTab === 'settings' && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 28 }}>
+            
+            {/* CARD 1: Marathon Registration Open/Close Control */}
+            <div style={{
+              backgroundColor: '#FFFFFF',
+              borderRadius: 4,
+              border: '1px solid rgba(29,30,32,0.12)',
+              padding: '28px',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.02)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                <Power className="w-6 h-6 text-amber-700" />
+                <h4 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.3rem', fontWeight: 600, color: '#1D1E20' }}>
+                  Public Registration Status
+                </h4>
+              </div>
+              <p style={{ color: '#666', fontSize: '0.88rem', marginBottom: 20, lineHeight: 1.5 }}>
+                Control whether riders can register on the public website. When closed, visitors see your custom closure notice and the registration form is locked.
+              </p>
+
+              <div style={{
+                backgroundColor: stats?.event?.isRegistrationOpen ? '#EAF5F0' : '#FDECEA',
+                border: stats?.event?.isRegistrationOpen ? '1px solid #1B6A50' : '1px solid #C85A32',
+                padding: '16px',
+                borderRadius: 4,
+                marginBottom: 20
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#333' }}>Current Portal Status:</span>
+                  <span style={{
+                    fontWeight: 700,
+                    fontSize: '0.88rem',
+                    textTransform: 'uppercase',
+                    color: stats?.event?.isRegistrationOpen ? '#1B6A50' : '#C85A32'
+                  }}>
+                    {stats?.event?.isRegistrationOpen ? '● Registrations OPEN' : '■ Registrations CLOSED'}
+                  </span>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 18 }}>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, textTransform: 'uppercase', color: '#555', marginBottom: 6 }}>
+                  Closure Notice Message for Visitors
+                </label>
+                <textarea
+                  rows={3}
+                  value={closureReasonInput}
+                  onChange={(e) => setClosureReasonInput(e.target.value)}
+                  placeholder="e.g. Online registrations for Salem Cycling Marathon are officially closed. Spot registrations may be available at the expo."
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: 3,
+                    border: '1px solid rgba(29,30,32,0.2)',
+                    fontSize: '0.88rem',
+                    backgroundColor: '#FAF7F2',
+                    outline: 'none'
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: 12 }}>
+                <button
+                  type="button"
+                  disabled={submittingClosure}
+                  onClick={() => handleSaveRegistrationWithReason(true)}
+                  style={{
+                    flex: 1,
+                    backgroundColor: '#1B6A50',
+                    color: '#FFF',
+                    border: 'none',
+                    padding: '12px',
+                    borderRadius: 3,
+                    fontSize: '0.82rem',
+                    fontWeight: 700,
+                    letterSpacing: '0.04em',
+                    textTransform: 'uppercase',
+                    cursor: submittingClosure ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6
+                  }}
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Open Portal</span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={submittingClosure}
+                  onClick={() => handleSaveRegistrationWithReason(false)}
+                  style={{
+                    flex: 1,
+                    backgroundColor: '#C85A32',
+                    color: '#FFF',
+                    border: 'none',
+                    padding: '12px',
+                    borderRadius: 3,
+                    fontSize: '0.82rem',
+                    fontWeight: 700,
+                    letterSpacing: '0.04em',
+                    textTransform: 'uppercase',
+                    cursor: submittingClosure ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6
+                  }}
+                >
+                  <XCircle className="w-4 h-4" />
+                  <span>Close Registrations</span>
+                </button>
+              </div>
+            </div>
+
+            {/* CARD 2: Admin Password Reset */}
+            <div style={{
+              backgroundColor: '#FFFFFF',
+              borderRadius: 4,
+              border: '1px solid rgba(29,30,32,0.12)',
+              padding: '28px',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.02)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                <KeyRound className="w-6 h-6 text-amber-700" />
+                <h4 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.3rem', fontWeight: 600, color: '#1D1E20' }}>
+                  Admin Password Reset
+                </h4>
+              </div>
+              <p style={{ color: '#666', fontSize: '0.88rem', marginBottom: 20, lineHeight: 1.5 }}>
+                Update your administrative login password. New password must be at least 8 characters long and will be securely hashed with bcrypt.
+              </p>
+
+              {passwordFeedback && (
+                <div style={{
+                  padding: '10px 14px',
+                  borderRadius: 4,
+                  marginBottom: 16,
+                  fontSize: '0.85rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  backgroundColor: passwordFeedback.success ? '#EAF5F0' : '#FDECEA',
+                  color: passwordFeedback.success ? '#1B6A50' : '#C85A32',
+                  border: passwordFeedback.success ? '1px solid #1B6A50' : '1px solid #C85A32'
+                }}>
+                  {passwordFeedback.success ? <CheckCircle2 className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
+                  <span>{passwordFeedback.message}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleChangePasswordSubmit}>
+                <div style={{ marginBottom: 14 }}>
+                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, textTransform: 'uppercase', color: '#555', marginBottom: 6 }}>
+                    Current Password
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={passwordForm.currentPassword}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                    placeholder="Enter existing password"
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      borderRadius: 3,
+                      border: '1px solid rgba(29,30,32,0.2)',
+                      fontSize: '0.88rem',
+                      backgroundColor: '#FAF7F2',
+                      outline: 'none'
+                    }}
+                  />
+                </div>
+
+                <div style={{ marginBottom: 14 }}>
+                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, textTransform: 'uppercase', color: '#555', marginBottom: 6 }}>
+                    New Password (min 8 chars)
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    minLength={8}
+                    value={passwordForm.newPassword}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                    placeholder="Enter new strong password"
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      borderRadius: 3,
+                      border: '1px solid rgba(29,30,32,0.2)',
+                      fontSize: '0.88rem',
+                      backgroundColor: '#FAF7F2',
+                      outline: 'none'
+                    }}
+                  />
+                </div>
+
+                <div style={{ marginBottom: 20 }}>
+                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, textTransform: 'uppercase', color: '#555', marginBottom: 6 }}>
+                    Confirm New Password
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    minLength={8}
+                    value={passwordForm.confirmPassword}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                    placeholder="Re-type new password"
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      borderRadius: 3,
+                      border: '1px solid rgba(29,30,32,0.2)',
+                      fontSize: '0.88rem',
+                      backgroundColor: '#FAF7F2',
+                      outline: 'none'
+                    }}
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={submittingPassword}
+                  style={{
+                    width: '100%',
+                    backgroundColor: '#1D1E20',
+                    color: '#FFF',
+                    border: 'none',
+                    padding: '12px',
+                    borderRadius: 3,
+                    fontSize: '0.85rem',
+                    fontWeight: 700,
+                    letterSpacing: '0.04em',
+                    textTransform: 'uppercase',
+                    cursor: submittingPassword ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8
+                  }}
+                >
+                  <KeyRound className="w-4 h-4" />
+                  <span>{submittingPassword ? 'Updating Password...' : 'Save New Password'}</span>
+                </button>
+              </form>
+            </div>
+
+          </div>
+        )}
+
       </div>
 
       {/* MODAL 1: Screenshot Viewer */}
@@ -1173,6 +1706,184 @@ const AdminPanel = () => {
                   Confirm Rejection
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* MODAL 4: Edit Category Modal */}
+      <AnimatePresence>
+        {editingCategory && (
+          <div 
+            onClick={() => setEditingCategory(null)}
+            style={{ 
+              position: 'fixed', 
+              inset: 0, 
+              backgroundColor: 'rgba(0,0,0,0.7)', 
+              zIndex: 10000, 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              padding: 24 
+            }}
+          >
+            <div 
+              onClick={(e) => e.stopPropagation()} 
+              style={{ maxWidth: 540, width: '100%', backgroundColor: '#FFFFFF', borderRadius: 4, padding: '28px', maxHeight: '90vh', overflowY: 'auto' }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                <div>
+                  <span style={{ fontSize: '0.75rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#C59A5A', fontWeight: 700 }}>
+                    Category Settings
+                  </span>
+                  <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.4rem', fontWeight: 600, color: '#1D1E20' }}>
+                    Edit {editingCategory.name}
+                  </h3>
+                </div>
+                <button onClick={() => setEditingCategory(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>
+              </div>
+
+              <form onSubmit={handleSaveCategorySubmit}>
+                <div style={{ marginBottom: 14 }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', color: '#555', marginBottom: 4 }}>
+                    Category Name
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editCategoryForm.name}
+                    onChange={(e) => setEditCategoryForm({ ...editCategoryForm, name: e.target.value })}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: 3, border: '1px solid rgba(29,30,32,0.2)', backgroundColor: '#FAF7F2', outline: 'none' }}
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', color: '#555', marginBottom: 4 }}>
+                      Fee (INR ₹)
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min={0}
+                      value={editCategoryForm.priceInr}
+                      onChange={(e) => setEditCategoryForm({ ...editCategoryForm, priceInr: Number(e.target.value) })}
+                      style={{ width: '100%', padding: '9px 12px', borderRadius: 3, border: '1px solid rgba(29,30,32,0.2)', backgroundColor: '#FAF7F2', outline: 'none' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', color: '#555', marginBottom: 4 }}>
+                      Distance (KM)
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      step="0.1"
+                      min={1}
+                      value={editCategoryForm.distanceKm}
+                      onChange={(e) => setEditCategoryForm({ ...editCategoryForm, distanceKm: Number(e.target.value) })}
+                      style={{ width: '100%', padding: '9px 12px', borderRadius: 3, border: '1px solid rgba(29,30,32,0.2)', backgroundColor: '#FAF7F2', outline: 'none' }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', color: '#555', marginBottom: 4 }}>
+                      Min Age Requirement
+                    </label>
+                    <input
+                      type="number"
+                      min={5}
+                      value={editCategoryForm.minAge}
+                      onChange={(e) => setEditCategoryForm({ ...editCategoryForm, minAge: Number(e.target.value) })}
+                      style={{ width: '100%', padding: '9px 12px', borderRadius: 3, border: '1px solid rgba(29,30,32,0.2)', backgroundColor: '#FAF7F2', outline: 'none' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', color: '#555', marginBottom: 4 }}>
+                      Max Rider Capacity
+                    </label>
+                    <input
+                      type="number"
+                      min={10}
+                      value={editCategoryForm.maxCapacity}
+                      onChange={(e) => setEditCategoryForm({ ...editCategoryForm, maxCapacity: Number(e.target.value) })}
+                      style={{ width: '100%', padding: '9px 12px', borderRadius: 3, border: '1px solid rgba(29,30,32,0.2)', backgroundColor: '#FAF7F2', outline: 'none' }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: 14 }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', color: '#555', marginBottom: 4 }}>
+                    Timing Classification
+                  </label>
+                  <select
+                    value={editCategoryForm.timingType}
+                    onChange={(e) => setEditCategoryForm({ ...editCategoryForm, timingType: e.target.value })}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: 3, border: '1px solid rgba(29,30,32,0.2)', backgroundColor: '#FAF7F2', outline: 'none' }}
+                  >
+                    <option value="TIMED">TIMED (RFID Timing Chip & Podium Rankings)</option>
+                    <option value="NON_TIMED">NON_TIMED (Fun Ride / Community Participant)</option>
+                  </select>
+                </div>
+
+                <div style={{ marginBottom: 14 }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', color: '#555', marginBottom: 4 }}>
+                    Description & Highlights
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={editCategoryForm.description}
+                    onChange={(e) => setEditCategoryForm({ ...editCategoryForm, description: e.target.value })}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: 3, border: '1px solid rgba(29,30,32,0.2)', backgroundColor: '#FAF7F2', outline: 'none' }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+                  <input
+                    type="checkbox"
+                    id="isActiveCheckbox"
+                    checked={editCategoryForm.isActive}
+                    onChange={(e) => setEditCategoryForm({ ...editCategoryForm, isActive: e.target.checked })}
+                    style={{ width: 18, height: 18, cursor: 'pointer' }}
+                  />
+                  <label htmlFor="isActiveCheckbox" style={{ fontSize: '0.9rem', color: '#333', cursor: 'pointer', fontWeight: 600 }}>
+                    Category is Active (Visible on public registration page)
+                  </label>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+                  <button
+                    type="button"
+                    onClick={() => setEditingCategory(null)}
+                    style={{ backgroundColor: 'transparent', border: '1px solid #888', padding: '9px 18px', borderRadius: 2, cursor: 'pointer' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={savingCategory}
+                    style={{
+                      backgroundColor: '#1B6A50',
+                      color: '#FFF',
+                      border: 'none',
+                      padding: '9px 22px',
+                      borderRadius: 2,
+                      fontWeight: 700,
+                      cursor: savingCategory ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6
+                    }}
+                  >
+                    <Save className="w-4 h-4" />
+                    <span>{savingCategory ? 'Updating...' : 'Save & Update'}</span>
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}

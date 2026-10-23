@@ -221,27 +221,6 @@ const Navbar = () => {
               <span>30 OCT 2026</span>
             </div>
 
-            {/* Admin Shield Icon (Hidden on small mobile, accessible in drawer) */}
-            <Link
-              to="/admin"
-              title="Admin Portal"
-              className="hidden sm:flex"
-              style={{
-                width: 34,
-                height: 34,
-                borderRadius: '50%',
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: isScrolled || isHome ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.04)',
-                border: isScrolled || isHome ? '1px solid rgba(255, 255, 255, 0.15)' : '1px solid rgba(29, 30, 32, 0.12)',
-                color: isScrolled || isHome ? '#FAF7F2' : '#1D1E20',
-                transition: 'all 0.2s ease',
-                textDecoration: 'none'
-              }}
-            >
-              <Shield size={14} />
-            </Link>
-
             {/* Register CTA Button (Responsive padding) */}
             <Link
               to="/register"
@@ -327,8 +306,7 @@ const Navbar = () => {
                   { name: 'Race Categories', path: '/#categories', num: '03' },
                   { name: 'Event Guide & Route', path: '/event-info', num: '04' },
                   { name: 'Photo Gallery', path: '/gallery', num: '05' },
-                  { name: 'Contact & Support', path: '/contact', num: '06' },
-                  { name: 'Admin Console', path: '/admin', num: '07' }
+                  { name: 'Contact & Support', path: '/contact', num: '06' }
                 ].map((item) => (
                   <Link
                     key={item.name}
